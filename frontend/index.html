@@ -18,6 +18,7 @@
         <!-- Auth Section -->
         <section id="auth-section">
             <h2>Login or Register</h2>
+            <div id="auth-error" style="color: red; margin-bottom: 10px;"></div>
             <input type="text" id="name" placeholder="Name (For Register only)">
             <input type="email" id="email" placeholder="Email">
             <input type="password" id="password" placeholder="Password">
@@ -25,21 +26,37 @@
             <button onclick="register()">Register</button>
         </section>
 
-        <!-- Dashboard Section -->
+        <!-- Main App Section -->
         <section id="dashboard-section" style="display: none;">
-            <div class="panel">
+            
+            <!-- Navigation -->
+            <div style="margin-bottom: 20px;">
+                <button onclick="switchTab('market')">Marketplace</button>
+                <button onclick="switchTab('my-gigs')">My Gigs & Bids</button>
+            </div>
+
+            <!-- TAB 1: Marketplace -->
+            <div id="tab-market" class="panel">
                 <h2>Post a New Gig</h2>
                 <input type="text" id="gig-title" placeholder="Gig Title">
                 <input type="text" id="gig-desc" placeholder="Description">
                 <input type="number" id="gig-budget" placeholder="Base Budget (₹)">
                 <button onclick="postGig()">Post Gig</button>
+
+                <hr style="margin: 20px 0;">
+
+                <h2>Marketplace (Live Bidding)</h2>
+                <button onclick="loadMarket()">🔄 Refresh Market</button>
+                <div id="market-container"></div>
             </div>
 
-            <div class="panel">
-                <h2>Marketplace (Live Bidding)</h2>
-                <button onclick="loadGigs()">🔄 Refresh Market</button>
-                <div id="gigs-container"></div>
+            <!-- TAB 2: My Gigs -->
+            <div id="tab-my-gigs" class="panel" style="display: none;">
+                <h2>My Posted Gigs</h2>
+                <button onclick="loadMyGigs()">🔄 Refresh My Gigs</button>
+                <div id="my-gigs-container"></div>
             </div>
+
         </section>
     </main>
 
