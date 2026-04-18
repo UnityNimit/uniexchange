@@ -3,130 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UniExchange | Campus Freelance</title>
+    <title>UniExchange</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: { brand: '#004aad', brandHover: '#003580' }
+                    colors: { 
+                        brand: '#18181b', // zinc-900 for a sleek, dark minimalist look
+                        brandHover: '#27272a',
+                        accent: '#2563eb' // subtle blue for actions
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
                 }
             }
         }
     </script>
     <link rel="stylesheet" href="css/style.css">
+    <!-- Optional: Import Inter font for that premium minimal look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+<body class="bg-zinc-50 text-zinc-800 font-sans antialiased min-h-screen flex flex-col selection:bg-zinc-200">
 
     <!-- Global Loading Overlay -->
-    <div id="loader" class="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm hidden flex-col items-center justify-center">
-        <div class="spinner border-4 border-slate-200 border-t-brand rounded-full w-12 h-12 animate-spin"></div>
-        <p id="loader-text" class="mt-4 text-brand font-semibold text-lg tracking-wide">Processing...</p>
+    <div id="loader" class="fixed inset-0 z-50 bg-zinc-50/90 backdrop-blur-sm hidden flex-col items-center justify-center transition-all">
+        <div class="w-8 h-8 border-[3px] border-zinc-200 border-t-zinc-900 rounded-full animate-spin"></div>
+        <p id="loader-text" class="mt-4 text-zinc-900 font-medium text-sm tracking-wide">Processing</p>
     </div>
 
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <div class="bg-brand text-white font-bold p-2 rounded-lg text-xl leading-none">UE</div>
-                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">UniExchange</h1>
-            </div>
-            <div id="user-info" class="hidden items-center gap-4">
-                <p class="text-sm text-slate-600">Welcome, <strong id="username-display" class="text-slate-900"></strong></p>
-                <button onclick="logout()" class="text-sm bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg font-semibold transition-colors">Logout</button>
+    <!-- Minimal Header & Top Nav -->
+    <header class="bg-white border-b border-zinc-200 sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-8">
+                <!-- Logo -->
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 bg-zinc-900 text-white flex items-center justify-center text-xs font-bold rounded-sm">UE</div>
+                    <h1 class="text-base font-semibold text-zinc-900 tracking-tight">UniExchange</h1>
+                </div>
+
+                <!-- Top Navigation (Hidden on Auth, shown via JS) -->
+                <nav id="top-nav" class="hidden items-center gap-6 text-sm font-medium text-zinc-500 h-full pt-1">
+                    <button onclick="switchTab('market')" id="btn-market" class="h-14 border-b-2 border-transparent hover:text-zinc-900 transition-colors">Marketplace</button>
+                    <button onclick="switchTab('my-gigs')" id="btn-my-gigs" class="h-14 border-b-2 border-transparent hover:text-zinc-900 transition-colors">Gigs & Bids</button>
+                    <button onclick="switchTab('profile')" id="btn-profile" class="h-14 border-b-2 border-transparent hover:text-zinc-900 transition-colors">Profile</button>
+                </nav>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    <main class="flex-grow max-w-5xl mx-auto px-4 sm:px-6 py-10 w-full">
         
         <!-- ================= AUTH SECTION ================= -->
-        <section id="auth-section" class="max-w-md mx-auto mt-10">
-            <div class="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
-                <h2 class="text-2xl font-bold text-center text-slate-900 mb-6">Join the Marketplace</h2>
-                <div id="auth-error" class="hidden bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100"></div>
+        <section id="auth-section" class="max-w-sm mx-auto mt-16">
+            <div class="text-center mb-8">
+                <h2 class="text-xl font-semibold text-zinc-900">Welcome to UniExchange</h2>
+                <p class="text-sm text-zinc-500 mt-1">Enter your details to continue.</p>
+            </div>
+            
+            <div id="auth-error" class="hidden bg-red-50 text-red-600 px-4 py-3 text-sm mb-6 border border-red-100"></div>
+            
+            <div class="space-y-4">
+                <input type="text" id="name" placeholder="Full Name (Register only)" class="w-full px-3 py-2 bg-white border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none transition-all text-sm rounded-md placeholder-zinc-400">
+                <input type="email" id="email" placeholder="University Email" class="w-full px-3 py-2 bg-white border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none transition-all text-sm rounded-md placeholder-zinc-400">
+                <input type="password" id="password" placeholder="Password" class="w-full px-3 py-2 bg-white border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none transition-all text-sm rounded-md placeholder-zinc-400">
                 
-                <div class="space-y-4">
-                    <input type="text" id="name" placeholder="Full Name (For Register only)" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all">
-                    <input type="email" id="email" placeholder="University Email" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all">
-                    <input type="password" id="password" placeholder="Password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all">
-                    
-                    <div class="pt-2 flex gap-3">
-                        <button onclick="login()" class="flex-1 bg-brand hover:bg-brandHover text-white py-3 rounded-xl font-bold transition-colors shadow-lg shadow-brand/30">Login</button>
-                        <button onclick="register()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition-colors">Register</button>
-                    </div>
+                <div class="pt-4 flex flex-col gap-3">
+                    <button onclick="login()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 text-sm font-medium transition-colors rounded-md">Log In</button>
+                    <button onclick="register()" class="w-full bg-white border border-zinc-300 hover:bg-zinc-50 text-zinc-900 py-2.5 text-sm font-medium transition-colors rounded-md">Create Account</button>
                 </div>
             </div>
         </section>
 
         <!-- ================= DASHBOARD SECTION ================= -->
-        <section id="dashboard-section" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <section id="dashboard-section" class="hidden">
             
-            <!-- Sidebar Navigation -->
-            <div class="lg:col-span-1">
-                <nav class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-2 sticky top-24">
-                    <button onclick="switchTab('market')" id="btn-market" class="w-full text-left px-4 py-3 rounded-xl font-semibold transition-colors bg-brand text-white">🌍 Marketplace</button>
-                    <button onclick="switchTab('my-gigs')" id="btn-my-gigs" class="w-full text-left px-4 py-3 rounded-xl font-semibold transition-colors text-slate-600 hover:bg-slate-50">💼 My Gigs & Bids</button>
-                    <button onclick="switchTab('profile')" id="btn-profile" class="w-full text-left px-4 py-3 rounded-xl font-semibold transition-colors text-slate-600 hover:bg-slate-50">👤 My Profile</button>
-                </nav>
-            </div>
-
-            <!-- Content Area -->
-            <div class="lg:col-span-3">
+            <!-- TAB 1: Marketplace -->
+            <div id="tab-market" class="space-y-6">
+                <div class="flex items-end justify-between border-b border-zinc-200 pb-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-semibold text-zinc-900">Live Market</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Browse open tasks and place your bids.</p>
+                    </div>
+                    <button onclick="loadMarket()" class="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors">Refresh</button>
+                </div>
                 
-                <!-- TAB 1: Marketplace -->
-                <div id="tab-market" class="space-y-6">
-                    <!-- Post Gig Card -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                        <h2 class="text-lg font-bold mb-4">Post a New Gig</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input type="text" id="gig-title" placeholder="What do you need help with?" class="col-span-1 md:col-span-2 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
-                            <input type="text" id="gig-desc" placeholder="Details and requirements..." class="col-span-1 md:col-span-2 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
-                            <input type="number" id="gig-budget" placeholder="Base Budget (₹)" class="px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
-                            <button onclick="postGig()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg py-2 transition-colors">Publish Gig</button>
-                        </div>
-                    </div>
-
-                    <!-- Live Market Feed -->
-                    <div class="flex items-center justify-between mt-8 mb-4">
-                        <h2 class="text-xl font-extrabold text-slate-900">Live Bidding Market</h2>
-                        <button onclick="loadMarket()" class="text-sm text-brand font-semibold hover:underline flex items-center gap-1">🔄 Refresh</button>
-                    </div>
-                    <div id="market-container" class="space-y-4"></div>
-                </div>
-
-                <!-- TAB 2: My Gigs -->
-                <div id="tab-my-gigs" class="hidden space-y-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-extrabold text-slate-900">Manage Your Postings</h2>
-                        <button onclick="loadMyGigs()" class="text-sm text-brand font-semibold hover:underline">🔄 Refresh</button>
-                    </div>
-                    <div id="my-gigs-container" class="space-y-6"></div>
-                </div>
-
-                <!-- TAB 3: Profile -->
-                <div id="tab-profile" class="hidden">
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-xl">
-                        <h2 class="text-xl font-extrabold text-slate-900 mb-6">Account Settings</h2>
-                        
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-8">
-                            <p class="text-sm text-slate-500">Name</p>
-                            <p id="profile-name" class="font-bold text-lg mb-2 text-slate-900">-</p>
-                            <p class="text-sm text-slate-500">Email Address</p>
-                            <p id="profile-email" class="font-bold text-lg text-slate-900">-</p>
-                        </div>
-                        
-                        <h3 class="font-bold text-slate-900 mb-4">Change Password</h3>
-                        <div class="space-y-4">
-                            <input type="password" id="old-password" placeholder="Current Password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
-                            <input type="password" id="new-password" placeholder="New Password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
-                            <button onclick="changePassword()" class="w-full bg-brand hover:bg-brandHover text-white py-3 rounded-xl font-bold transition-colors">Update Password</button>
-                        </div>
-                    </div>
-                </div>
-
+                <div id="market-container" class="grid gap-4"></div>
             </div>
+
+            <!-- TAB 2: Gigs & Bids -->
+            <div id="tab-my-gigs" class="hidden space-y-12">
+                
+                <!-- Post a Gig Form -->
+                <div class="bg-white p-6 border border-zinc-200 rounded-md">
+                    <h3 class="text-base font-semibold text-zinc-900 mb-4">Post a New Gig</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="gig-title" placeholder="Gig Title" class="col-span-1 md:col-span-2 px-3 py-2 text-sm border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none rounded-md">
+                        <input type="text" id="gig-desc" placeholder="Details and requirements" class="col-span-1 md:col-span-2 px-3 py-2 text-sm border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none rounded-md">
+                        <input type="number" id="gig-budget" placeholder="Base Budget (INR)" class="px-3 py-2 text-sm border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none rounded-md">
+                        <button onclick="postGig()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium rounded-md py-2 transition-colors">Publish Gig</button>
+                    </div>
+                </div>
+
+                <!-- Manage Postings -->
+                <div>
+                    <div class="flex items-end justify-between border-b border-zinc-200 pb-4 mb-6">
+                        <div>
+                            <h2 class="text-lg font-semibold text-zinc-900">Your Postings</h2>
+                            <p class="text-sm text-zinc-500 mt-1">Manage gigs you have created and review incoming bids.</p>
+                        </div>
+                        <button onclick="loadMyGigs()" class="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors">Refresh</button>
+                    </div>
+                    <div id="my-gigs-container" class="grid gap-4"></div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Profile -->
+            <div id="tab-profile" class="hidden">
+                <div class="max-w-2xl">
+                    <h2 class="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-200 pb-4">Profile Settings</h2>
+                    
+                    <!-- Profile Details & Picture -->
+                    <div class="flex items-center gap-6 mb-10">
+                        <!-- Profile Pic Placeholder -->
+                        <div class="w-20 h-20 bg-zinc-100 border border-zinc-200 rounded-full flex items-center justify-center text-zinc-400 text-2xl font-medium shrink-0">
+                            <span id="profile-initials">UE</span>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Account Details</p>
+                            <p id="profile-name" class="font-semibold text-lg text-zinc-900 mt-1">-</p>
+                            <p id="profile-email" class="text-sm text-zinc-600">-</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Change Password -->
+                    <div class="mb-10">
+                        <h3 class="text-sm font-medium text-zinc-900 mb-4">Security</h3>
+                        <div class="grid gap-4 max-w-sm">
+                            <input type="password" id="old-password" placeholder="Current Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none rounded-md">
+                            <input type="password" id="new-password" placeholder="New Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none rounded-md">
+                            <button onclick="changePassword()" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium py-2 rounded-md transition-colors border border-zinc-200">Update Password</button>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone / Logout -->
+                    <div class="pt-6 border-t border-zinc-200">
+                        <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium transition-colors">Log Out of UniExchange</button>
+                    </div>
+                </div>
+            </div>
+
         </section>
     </main>
 
