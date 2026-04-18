@@ -6,38 +6,47 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Global Loading Overlay -->
+    <div id="loader" class="loader-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p id="loader-text">Processing...</p>
+    </div>
+
     <header>
         <h1>UniExchange <small>(DBMS Core)</small></h1>
         <div id="user-info" style="display: none;">
             Logged in as: <strong id="username-display"></strong> 
-            <button onclick="logout()">Logout</button>
+            <button onclick="logout()" style="background: darkred;">Logout</button>
         </div>
     </header>
 
     <main>
         <!-- Auth Section -->
         <section id="auth-section">
-            <h2>Login or Register</h2>
-            <div id="auth-error" style="color: red; margin-bottom: 10px;"></div>
-            <input type="text" id="name" placeholder="Name (For Register only)">
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
-            <button onclick="login()">Login</button>
-            <button onclick="register()">Register</button>
+            <div class="panel">
+                <h2>Login or Register</h2>
+                <div id="auth-error" style="color: red; margin-bottom: 10px;"></div>
+                <input type="text" id="name" placeholder="Name (For Register only)">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="password" placeholder="Password">
+                <button onclick="login()">Login</button>
+                <button onclick="register()" style="background: #444;">Register</button>
+            </div>
         </section>
 
         <!-- Main App Section -->
         <section id="dashboard-section" style="display: none;">
             
             <!-- Navigation -->
-            <div style="margin-bottom: 20px;">
-                <button onclick="switchTab('market')">Marketplace</button>
-                <button onclick="switchTab('my-gigs')">My Gigs & Bids</button>
+            <div class="nav-tabs">
+                <button onclick="switchTab('market')" id="btn-market">Marketplace</button>
+                <button onclick="switchTab('my-gigs')" id="btn-my-gigs">My Gigs & Bids</button>
+                <button onclick="switchTab('profile')" id="btn-profile">My Profile</button>
             </div>
 
             <!-- TAB 1: Marketplace -->
             <div id="tab-market" class="panel">
-                <h2>Post a New Gig</h2>
+                <h2 style="margin-top: 0;">Post a New Gig</h2>
                 <input type="text" id="gig-title" placeholder="Gig Title">
                 <input type="text" id="gig-desc" placeholder="Description">
                 <input type="number" id="gig-budget" placeholder="Base Budget (₹)">
@@ -52,9 +61,23 @@
 
             <!-- TAB 2: My Gigs -->
             <div id="tab-my-gigs" class="panel" style="display: none;">
-                <h2>My Posted Gigs</h2>
+                <h2 style="margin-top: 0;">My Posted Gigs</h2>
                 <button onclick="loadMyGigs()">🔄 Refresh My Gigs</button>
                 <div id="my-gigs-container"></div>
+            </div>
+
+            <!-- TAB 3: Profile (NEW) -->
+            <div id="tab-profile" class="panel" style="display: none;">
+                <h2 style="margin-top: 0;">My Profile</h2>
+                <p><strong>Name:</strong> <span id="profile-name"></span></p>
+                <p><strong>Email:</strong> <span id="profile-email"></span></p>
+                
+                <hr style="margin: 20px 0;">
+                
+                <h3>Change Password</h3>
+                <input type="password" id="old-password" placeholder="Current Password">
+                <input type="password" id="new-password" placeholder="New Password">
+                <button onclick="changePassword()">Update Password</button>
             </div>
 
         </section>
