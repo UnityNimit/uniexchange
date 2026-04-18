@@ -2,87 +2,139 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>UniExchange DB</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniExchange | Campus Freelance</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#004aad', brandHover: '#003580' }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
     <!-- Global Loading Overlay -->
-    <div id="loader" class="loader-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <p id="loader-text">Processing...</p>
+    <div id="loader" class="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm hidden flex-col items-center justify-center">
+        <div class="spinner border-4 border-slate-200 border-t-brand rounded-full w-12 h-12 animate-spin"></div>
+        <p id="loader-text" class="mt-4 text-brand font-semibold text-lg tracking-wide">Processing...</p>
     </div>
 
-    <header>
-        <h1>UniExchange <small>(DBMS Core)</small></h1>
-        <div id="user-info" style="display: none;">
-            Logged in as: <strong id="username-display"></strong> 
-            <button onclick="logout()" style="background: darkred;">Logout</button>
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="bg-brand text-white font-bold p-2 rounded-lg text-xl leading-none">UE</div>
+                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">UniExchange</h1>
+            </div>
+            <div id="user-info" class="hidden items-center gap-4">
+                <p class="text-sm text-slate-600">Welcome, <strong id="username-display" class="text-slate-900"></strong></p>
+                <button onclick="logout()" class="text-sm bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg font-semibold transition-colors">Logout</button>
+            </div>
         </div>
     </header>
 
-    <main>
-        <!-- Auth Section -->
-        <section id="auth-section">
-            <div class="panel">
-                <h2>Login or Register</h2>
-                <div id="auth-error" style="color: red; margin-bottom: 10px;"></div>
-                <input type="text" id="name" placeholder="Name (For Register only)">
-                <input type="email" id="email" placeholder="Email">
-                <input type="password" id="password" placeholder="Password">
-                <button onclick="login()">Login</button>
-                <button onclick="register()" style="background: #444;">Register</button>
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <!-- ================= AUTH SECTION ================= -->
+        <section id="auth-section" class="max-w-md mx-auto mt-10">
+            <div class="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
+                <h2 class="text-2xl font-bold text-center text-slate-900 mb-6">Join the Marketplace</h2>
+                <div id="auth-error" class="hidden bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100"></div>
+                
+                <div class="space-y-4">
+                    <input type="text" id="name" placeholder="Full Name (For Register only)" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all">
+                    <input type="email" id="email" placeholder="University Email" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all">
+                    <input type="password" id="password" placeholder="Password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all">
+                    
+                    <div class="pt-2 flex gap-3">
+                        <button onclick="login()" class="flex-1 bg-brand hover:bg-brandHover text-white py-3 rounded-xl font-bold transition-colors shadow-lg shadow-brand/30">Login</button>
+                        <button onclick="register()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition-colors">Register</button>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Main App Section -->
-        <section id="dashboard-section" style="display: none;">
+        <!-- ================= DASHBOARD SECTION ================= -->
+        <section id="dashboard-section" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-8">
             
-            <!-- Navigation -->
-            <div class="nav-tabs">
-                <button onclick="switchTab('market')" id="btn-market">Marketplace</button>
-                <button onclick="switchTab('my-gigs')" id="btn-my-gigs">My Gigs & Bids</button>
-                <button onclick="switchTab('profile')" id="btn-profile">My Profile</button>
+            <!-- Sidebar Navigation -->
+            <div class="lg:col-span-1">
+                <nav class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-2 sticky top-24">
+                    <button onclick="switchTab('market')" id="btn-market" class="w-full text-left px-4 py-3 rounded-xl font-semibold transition-colors bg-brand text-white">🌍 Marketplace</button>
+                    <button onclick="switchTab('my-gigs')" id="btn-my-gigs" class="w-full text-left px-4 py-3 rounded-xl font-semibold transition-colors text-slate-600 hover:bg-slate-50">💼 My Gigs & Bids</button>
+                    <button onclick="switchTab('profile')" id="btn-profile" class="w-full text-left px-4 py-3 rounded-xl font-semibold transition-colors text-slate-600 hover:bg-slate-50">👤 My Profile</button>
+                </nav>
             </div>
 
-            <!-- TAB 1: Marketplace -->
-            <div id="tab-market" class="panel">
-                <h2 style="margin-top: 0;">Post a New Gig</h2>
-                <input type="text" id="gig-title" placeholder="Gig Title">
-                <input type="text" id="gig-desc" placeholder="Description">
-                <input type="number" id="gig-budget" placeholder="Base Budget (₹)">
-                <button onclick="postGig()">Post Gig</button>
-
-                <hr style="margin: 20px 0;">
-
-                <h2>Marketplace (Live Bidding)</h2>
-                <button onclick="loadMarket()">🔄 Refresh Market</button>
-                <div id="market-container"></div>
-            </div>
-
-            <!-- TAB 2: My Gigs -->
-            <div id="tab-my-gigs" class="panel" style="display: none;">
-                <h2 style="margin-top: 0;">My Posted Gigs</h2>
-                <button onclick="loadMyGigs()">🔄 Refresh My Gigs</button>
-                <div id="my-gigs-container"></div>
-            </div>
-
-            <!-- TAB 3: Profile (NEW) -->
-            <div id="tab-profile" class="panel" style="display: none;">
-                <h2 style="margin-top: 0;">My Profile</h2>
-                <p><strong>Name:</strong> <span id="profile-name"></span></p>
-                <p><strong>Email:</strong> <span id="profile-email"></span></p>
+            <!-- Content Area -->
+            <div class="lg:col-span-3">
                 
-                <hr style="margin: 20px 0;">
-                
-                <h3>Change Password</h3>
-                <input type="password" id="old-password" placeholder="Current Password">
-                <input type="password" id="new-password" placeholder="New Password">
-                <button onclick="changePassword()">Update Password</button>
-            </div>
+                <!-- TAB 1: Marketplace -->
+                <div id="tab-market" class="space-y-6">
+                    <!-- Post Gig Card -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h2 class="text-lg font-bold mb-4">Post a New Gig</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="gig-title" placeholder="What do you need help with?" class="col-span-1 md:col-span-2 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
+                            <input type="text" id="gig-desc" placeholder="Details and requirements..." class="col-span-1 md:col-span-2 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
+                            <input type="number" id="gig-budget" placeholder="Base Budget (₹)" class="px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
+                            <button onclick="postGig()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg py-2 transition-colors">Publish Gig</button>
+                        </div>
+                    </div>
 
+                    <!-- Live Market Feed -->
+                    <div class="flex items-center justify-between mt-8 mb-4">
+                        <h2 class="text-xl font-extrabold text-slate-900">Live Bidding Market</h2>
+                        <button onclick="loadMarket()" class="text-sm text-brand font-semibold hover:underline flex items-center gap-1">🔄 Refresh</button>
+                    </div>
+                    <div id="market-container" class="space-y-4"></div>
+                </div>
+
+                <!-- TAB 2: My Gigs -->
+                <div id="tab-my-gigs" class="hidden space-y-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-extrabold text-slate-900">Manage Your Postings</h2>
+                        <button onclick="loadMyGigs()" class="text-sm text-brand font-semibold hover:underline">🔄 Refresh</button>
+                    </div>
+                    <div id="my-gigs-container" class="space-y-6"></div>
+                </div>
+
+                <!-- TAB 3: Profile -->
+                <div id="tab-profile" class="hidden">
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-xl">
+                        <h2 class="text-xl font-extrabold text-slate-900 mb-6">Account Settings</h2>
+                        
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-8">
+                            <p class="text-sm text-slate-500">Name</p>
+                            <p id="profile-name" class="font-bold text-lg mb-2 text-slate-900">-</p>
+                            <p class="text-sm text-slate-500">Email Address</p>
+                            <p id="profile-email" class="font-bold text-lg text-slate-900">-</p>
+                        </div>
+                        
+                        <h3 class="font-bold text-slate-900 mb-4">Change Password</h3>
+                        <div class="space-y-4">
+                            <input type="password" id="old-password" placeholder="Current Password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
+                            <input type="password" id="new-password" placeholder="New Password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand outline-none">
+                            <button onclick="changePassword()" class="w-full bg-brand hover:bg-brandHover text-white py-3 rounded-xl font-bold transition-colors">Update Password</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </section>
     </main>
 
-    <script src="app.js"></script>
+    <!-- Load JS Modules -->
+    <script src="js/state.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/market.js"></script>
+    <script src="js/gigs.js"></script>
+    <script src="js/profile.js"></script>
 </body>
 </html>
