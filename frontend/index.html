@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UniExchange DB</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>UniExchange <small>(DBMS Core)</small></h1>
+        <div id="user-info" style="display: none;">
+            Logged in as: <strong id="username-display"></strong> 
+            <button onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Auth Section -->
+        <section id="auth-section">
+            <h2>Login or Register</h2>
+            <input type="text" id="name" placeholder="Name (For Register only)">
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <button onclick="register()">Register</button>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" style="display: none;">
+            <div class="panel">
+                <h2>Post a New Gig</h2>
+                <input type="text" id="gig-title" placeholder="Gig Title">
+                <input type="text" id="gig-desc" placeholder="Description">
+                <input type="number" id="gig-budget" placeholder="Base Budget (₹)">
+                <button onclick="postGig()">Post Gig</button>
+            </div>
+
+            <div class="panel">
+                <h2>Marketplace (Live Bidding)</h2>
+                <button onclick="loadGigs()">🔄 Refresh Market</button>
+                <div id="gigs-container"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

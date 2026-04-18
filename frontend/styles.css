@@ -1,0 +1,9 @@
+body { font-family: monospace; background: #f4f4f9; color: #333; margin: 0; padding: 20px; }
+header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+input, button { padding: 8px; margin: 5px 0; font-family: monospace; }
+button { background: #333; color: white; border: none; cursor: pointer; }
+button:hover { background: #555; }
+.panel { background: white; padding: 15px; margin-bottom: 20px; border: 1px solid #ccc; }
+.gig-card { border: 1px dashed #777; padding: 10px; margin-top: 10px; background: #fff; }
+.gig-card h3 { margin: 0 0 10px 0; color: #0056b3; }
+.price-stats { background: #eef; padding: 5px; font-weight: bold; }
