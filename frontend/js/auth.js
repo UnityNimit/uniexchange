@@ -1,30 +1,35 @@
 async function register() {
-    const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+    const payload = {
+        first_name: document.getElementById('r-fname').value,
+        last_name: document.getElementById('r-lname').value,
+        college_id: document.getElementById('r-cid').value,
+        dob: document.getElementById('r-dob').value,
+        email: document.getElementById('r-email').value,
+        password: document.getElementById('r-password').value
+    };
     
-    showLoader("Registering account...");
+    showLoader("Creating account & wallet");
     try {
         const res = await fetch(`${API}/api/auth/register`, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify(payload)
         });
         const data = await res.json();
         
         if (data.success) {
-            user = data.user;
-            localStorage.setItem('user', JSON.stringify(user));
-            showDashboard();
+            alert("Account and Wallet created successfully! Please log in.");
+            toggleAuth();
+            document.getElementById('l-email').value = payload.email;
         } else showError(data.error);
-    } catch (e) { showError("Network error. Is the server running?"); }
+    } catch (e) { showError("Network error. Verify server status."); }
     hideLoader();
 }
 
 async function login() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+    const email = document.getElementById('l-email').value;
+    const password = document.getElementById('l-password').value;
     
-    showLoader("Logging in...");
+    showLoader("Authenticating");
     try {
         const res = await fetch(`${API}/api/auth/login`, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -37,15 +42,12 @@ async function login() {
             localStorage.setItem('user', JSON.stringify(user));
             showDashboard();
         } else showError(data.error);
-    } catch (e) { showError("Network error."); }
+    } catch (e) { showError("Network error. Verify server status."); }
     hideLoader();
 }
 
 function logout() {
     localStorage.removeItem('user');
     user = null;
-    document.getElementById('auth-section').classList.remove('hidden');
-    document.getElementById('dashboard-section').classList.add('hidden');
-    document.getElementById('user-info').classList.add('hidden');
-    document.getElementById('user-info').classList.remove('flex');
+    location.reload(); 
 }
