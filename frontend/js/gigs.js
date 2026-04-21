@@ -20,7 +20,9 @@ async function postGig() {
     const deadline = document.getElementById('gig-deadline').value;
     
     if(!title || !budget || !category_id || !deadline) return alert("All fields are required.");
-    const formattedDeadline = new Date(deadline).toISOString().slice(0, 19).replace('T', ' ');
+    
+    // FIX: Flawless ISO to MySQL Timestamp conversion
+    const formattedDeadline = deadline.replace('T', ' ') + ':00';
 
     showLoader("Publishing gig");
     try {
@@ -45,6 +47,8 @@ async function loadMyGigs() {
         const res = await fetch(`${API}/api/gigs/my/${user.id}`);
         const gigs = await res.json();
         
+        if (gigs.error) throw new Error(gigs.error);
+
         const container = document.getElementById('my-gigs-container');
         if(gigs.length === 0) {
             container.innerHTML = `<div class="text-sm text-zinc-500 text-center py-10 border border-dashed border-zinc-200 rounded-md">You haven't posted any gigs yet.</div>`;

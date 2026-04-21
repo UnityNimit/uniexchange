@@ -20,16 +20,16 @@ const pool = mysql.createPool({
 
 // --- AUTHENTICATION ---
 app.post('/api/auth/register', async (req, res) => {
-    const conn = await pool.getConnection();
     try {
         const { first_name, last_name, email, password, college_id, dob } = req.body;
-        const [userRes] = await conn.query(
+        const [userRes] = await pool.query(
             'INSERT INTO Platform_Users (role_id, first_name, last_name, email, password_hash, college_id, dob) VALUES (2, ?, ?, ?, ?, ?, ?)',[first_name, last_name, email, password, college_id, dob || null]
         );
         res.json({ success: true, user: { id: userRes.insertId, name: `${first_name} ${last_name}`, email, profile_pic_url: null } });
     } catch (err) {
+        console.error("Register Error:", err);
         res.status(400).json({ error: "Registration failed. Email or College ID might exist." });
-    } finally { conn.release(); }
+    }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -57,7 +57,7 @@ app.post('/api/auth/change-password', async (req, res) => {
 app.post('/api/profile/pfp', async (req, res) => {
     try {
         const { userId, url } = req.body;
-        await pool.query('UPDATE Platform_Users SET profile_pic_url = ? WHERE user_id = ?', [url, userId]);
+        await pool.query('UPDATE Platform_Users SET profile_pic_url = ? WHERE user_id = ?',[url, userId]);
         res.json({ success: true, url });
     } catch (err) { res.status(500).json({ error: "Failed to update profile picture." }); }
 });
@@ -65,13 +65,15 @@ app.post('/api/profile/pfp', async (req, res) => {
 app.get('/api/profile/stats/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        const [reviews] = await pool.query('SELECT AVG(rating) as avg_rating FROM Reviews WHERE reviewee_id = ?', [userId]);
-        const [gigs] = await pool.query('SELECT COUNT(*) as total_posted FROM Projects WHERE client_id = ?', [userId]);
         
-        // Earnings & Spendings calculation natively from Contracts Table
+        const [user] = await pool.query('SELECT first_name, last_name, profile_pic_url, created_at FROM Platform_Users WHERE user_id = ?',[userId]);
+        if (user.length === 0) return res.status(404).json({ error: "User not found" });
+
+        const [reviews] = await pool.query('SELECT AVG(rating) as avg_rating FROM Reviews WHERE reviewee_id = ?', [userId]);
+        const [gigs] = await pool.query('SELECT COUNT(*) as total_posted FROM Projects WHERE client_id = ?',[userId]);
+        
         const [earned] = await pool.query(`SELECT SUM(c.contract_amount) as total_earned FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.freelancer_id = ? AND p.status = 'completed'`, [userId]);
         const [given] = await pool.query(`SELECT SUM(c.contract_amount) as total_given, AVG(c.contract_amount) as avg_given FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.client_id = ? AND p.status = 'completed'`, [userId]);
-        const [user] = await pool.query('SELECT first_name, last_name, profile_pic_url, created_at FROM Platform_Users WHERE user_id = ?', [userId]);
 
         res.json({
             firstName: user[0].first_name,
@@ -84,23 +86,39 @@ app.get('/api/profile/stats/:userId', async (req, res) => {
             totalGiven: given[0].total_given || 0,
             avgGiven: given[0].avg_given ? parseFloat(given[0].avg_given).toFixed(2) : 0
         });
-    } catch (err) { res.status(500).json({ error: "Failed to fetch stats." }); }
+    } catch (err) { 
+        console.error("Stats Error:", err);
+        res.status(500).json({ error: "Failed to fetch stats." }); 
+    }
 });
 
 // --- CATEGORIES & GIGS ---
 app.get('/api/categories', async (req, res) => {
     try {
-        const [cats] = await pool.query('SELECT * FROM Project_categories ORDER BY category_name ASC');
+        const[cats] = await pool.query('SELECT * FROM Project_categories ORDER BY category_name ASC');
         res.json(cats);
     } catch (err) { res.status(500).json({ error: "Failed to load categories." }); }
 });
 
 app.post('/api/gigs', async (req, res) => {
+    const conn = await pool.getConnection();
     try {
         const { client_id, category_id, title, description, budget, deadline } = req.body;
-        await pool.query('INSERT INTO Projects (client_id, category_id, title, description, budget, deadline) VALUES (?, ?, ?, ?, ?, ?)',[client_id, category_id, title, description, budget, deadline]);
+        await conn.beginTransaction();
+
+        const [result] = await conn.query('INSERT INTO Projects (client_id, category_id, title, description, budget, deadline) VALUES (?, ?, ?, ?, ?, ?)',[client_id, category_id, title, description, budget, deadline]);
+        const projectId = result.insertId;
+
+        // Auto-initialize Status Info (Required since we dropped the Trigger)
+        await conn.query('INSERT INTO Project_status_info (project_id, project_status, payment_status) VALUES (?, ?, ?)',[projectId, 'Open for Bidding', 'Unpaid']);
+
+        await conn.commit();
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: "Failed to post project." }); }
+    } catch (err) { 
+        await conn.rollback();
+        console.error("Gig Post Error:", err);
+        res.status(500).json({ error: "Failed to post project." }); 
+    } finally { conn.release(); }
 });
 
 app.get('/api/gigs', async (req, res) => {
@@ -126,7 +144,7 @@ app.get('/api/gigs', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Failed to fetch market." }); }
 });
 
-// Get My Gigs (Now includes Contract info for In Progress/Completed gigs)
+// Get My Gigs
 app.get('/api/gigs/my/:userId', async (req, res) => {
     try {
         const [gigs] = await pool.query(`
@@ -159,28 +177,23 @@ app.post('/api/bids', async (req, res) => {
         if (gig.length === 0) throw new Error("Project not found.");
         if (gig[0].client_id === freelancer_id) throw new Error("You cannot bid on your own project.");
 
-        // Extend deadline by 1 hr if bid placed within final 30 mins
         const deadline = new Date(gig[0].deadline), now = new Date();
         const diffMins = (deadline - now) / 1000 / 60;
         if (diffMins > 0 && diffMins < 30) {
-            await pool.query('UPDATE Projects SET deadline = DATE_ADD(deadline, INTERVAL 1 HOUR) WHERE project_id = ?', [project_id]);
+            await pool.query('UPDATE Projects SET deadline = DATE_ADD(deadline, INTERVAL 1 HOUR) WHERE project_id = ?',[project_id]);
         }
         await pool.query('INSERT INTO Proposals (project_id, freelancer_id, proposal_amount) VALUES (?, ?, ?)',[project_id, freelancer_id, amount]);
         res.json({ success: true });
     } catch (err) { res.status(400).json({ error: err.message || "Failed to place bid." }); }
 });
 
-// Accept Bid (Creates Cash Contract)
 app.post('/api/gigs/accept', async (req, res) => {
     const conn = await pool.getConnection();
     try {
         const { project_id, proposal_id, client_id, freelancer_id, amount } = req.body;
         await conn.beginTransaction();
 
-        // 1. Create Contract (Escrow status ignored since payment is cash)
         await conn.query('INSERT INTO Contracts (project_id, proposal_id, client_id, freelancer_id, contract_amount, escrow_status) VALUES (?, ?, ?, ?, ?, ?)',[project_id, proposal_id, client_id, freelancer_id, amount, 'pending']);
-        
-        // 2. Update Statuses
         await conn.query('UPDATE Projects SET status = "in_progress" WHERE project_id = ?',[project_id]);
         await conn.query('UPDATE Proposals SET status = "accepted" WHERE proposal_id = ?', [proposal_id]);
         await conn.query('UPDATE Proposals SET status = "rejected" WHERE project_id = ? AND proposal_id != ?',[project_id, proposal_id]);
@@ -193,7 +206,6 @@ app.post('/api/gigs/accept', async (req, res) => {
     } finally { conn.release(); }
 });
 
-// Verify Complete & Rate Freelancer
 app.post('/api/gigs/complete', async (req, res) => {
     const conn = await pool.getConnection();
     try {
