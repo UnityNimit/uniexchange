@@ -33,7 +33,8 @@ app.post('/api/auth/register', async (req, res) => {
         await conn.query('INSERT INTO User_wallets (user_id, balance) VALUES (?, 0.00)', [userId]);
         await conn.commit();
         
-        res.json({ success: true, user: { id: userId, name: `${first_name} ${last_name}`, email } });
+        const defaultPfp = 'https://api.dicebear.com/7.x/avataaars/svg?seed=UE';
+        res.json({ success: true, user: { id: userId, name: `${first_name} ${last_name}`, email, profile_pic_url: defaultPfp, balance: 0.00 } });
     } catch (err) {
         await conn.rollback();
         res.status(400).json({ error: "Registration failed. Email or College ID might already exist." });
@@ -44,14 +45,14 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const[users] = await pool.query(`
-            SELECT u.user_id, u.first_name, u.last_name, u.email, w.balance 
+            SELECT u.user_id, u.first_name, u.last_name, u.email, u.profile_pic_url, w.balance 
             FROM Platform_Users u JOIN User_wallets w ON u.user_id = w.user_id 
             WHERE u.email = ? AND u.password_hash = ?
         `, [email, password]);
         
         if (users.length > 0) {
             const u = users[0];
-            res.json({ success: true, user: { id: u.user_id, name: `${u.first_name} ${u.last_name}`, email: u.email, balance: u.balance } });
+            res.json({ success: true, user: { id: u.user_id, name: `${u.first_name} ${u.last_name}`, email: u.email, profile_pic_url: u.profile_pic_url, balance: u.balance } });
         } else res.status(401).json({ error: "Invalid credentials." });
     } catch (err) { res.status(500).json({ error: "Server error." }); }
 });
@@ -62,9 +63,34 @@ app.post('/api/auth/change-password', async (req, res) => {
         const [users] = await pool.query('SELECT * FROM Platform_Users WHERE user_id = ? AND password_hash = ?', [userId, oldPassword]);
         if (users.length === 0) return res.status(401).json({ error: "Incorrect old password." });
 
-        await pool.query('UPDATE Platform_Users SET password_hash = ? WHERE user_id = ?', [newPassword, userId]);
+        await pool.query('UPDATE Platform_Users SET password_hash = ? WHERE user_id = ?',[newPassword, userId]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: "Failed to change password." }); }
+});
+
+// --- PROFILE STATS & PFP (NEW) ---
+app.get('/api/profile/stats/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        // Calculate Average Rating
+        const [reviews] = await pool.query('SELECT AVG(rating) as avg_rating, COUNT(*) as review_count FROM Reviews WHERE reviewee_id = ?', [userId]);
+        // Calculate Jobs Won (Contracts created where user is freelancer)
+        const[contracts] = await pool.query('SELECT COUNT(*) as jobs_won FROM Contracts WHERE freelancer_id = ?', [userId]);
+        
+        res.json({
+            avgRating: reviews[0].avg_rating ? parseFloat(reviews[0].avg_rating).toFixed(1) : 'No ratings yet',
+            reviewCount: reviews[0].review_count,
+            jobsWon: contracts[0].jobs_won
+        });
+    } catch (err) { res.status(500).json({ error: "Failed to fetch stats." }); }
+});
+
+app.post('/api/profile/pfp', async (req, res) => {
+    try {
+        const { userId, url } = req.body;
+        await pool.query('UPDATE Platform_Users SET profile_pic_url = ? WHERE user_id = ?', [url, userId]);
+        res.json({ success: true, url });
+    } catch (err) { res.status(500).json({ error: "Failed to update profile picture." }); }
 });
 
 // --- WALLET TOP-UP ---
@@ -72,7 +98,7 @@ app.post('/api/wallet/topup', async (req, res) => {
     try {
         const { user_id, amount } = req.body;
         await pool.query('UPDATE User_wallets SET balance = balance + ? WHERE user_id = ?',[amount, user_id]);
-        const [wallet] = await pool.query('SELECT balance FROM User_wallets WHERE user_id = ?',[user_id]);
+        const[wallet] = await pool.query('SELECT balance FROM User_wallets WHERE user_id = ?',[user_id]);
         res.json({ success: true, balance: wallet[0].balance });
     } catch (err) { res.status(500).json({ error: "Top-up failed." }); }
 });
@@ -108,7 +134,6 @@ app.post('/api/gigs', async (req, res) => {
     } finally { conn.release(); }
 });
 
-// Advanced Search + Dynamic Pricing (Rewritten to support TiDB without FULLTEXT)
 app.get('/api/gigs', async (req, res) => {
     try {
         const searchQuery = req.query.q;
@@ -123,7 +148,6 @@ app.get('/api/gigs', async (req, res) => {
         let params =[];
 
         if (searchQuery) {
-            // Using standard LIKE for bulletproof compatibility
             query += ` AND (p.title LIKE ? OR p.description LIKE ?)`;
             params.push(`%${searchQuery}%`, `%${searchQuery}%`);
         }
@@ -163,7 +187,6 @@ app.post('/api/bids', async (req, res) => {
         if (gig.length === 0) throw new Error("Project not found.");
         if (gig[0].client_id === freelancer_id) throw new Error("You cannot bid on your own project.");
 
-        // Anti-Sniper Logic
         const deadline = new Date(gig[0].deadline);
         const now = new Date();
         const diffMins = (deadline - now) / 1000 / 60;
@@ -186,20 +209,16 @@ app.post('/api/gigs/accept', async (req, res) => {
         const { project_id, proposal_id, client_id, freelancer_id, amount } = req.body;
         await conn.beginTransaction();
 
-        // 1. Verify Balance
         const [wallet] = await conn.query('SELECT wallet_id, balance FROM User_wallets WHERE user_id = ? FOR UPDATE', [client_id]);
         const clientWallet = wallet[0];
         if (clientWallet.balance < amount) throw new Error("Insufficient wallet balance for escrow.");
 
-        // 2. Move Funds
-        await conn.query('UPDATE User_wallets SET balance = balance - ? WHERE wallet_id = ?', [amount, clientWallet.wallet_id]);
+        await conn.query('UPDATE User_wallets SET balance = balance - ? WHERE wallet_id = ?',[amount, clientWallet.wallet_id]);
         await conn.query('UPDATE Platform_wallet SET balance = balance + ? WHERE wallet_id = 1',[amount]);
 
-        // 3. Log Transaction & Contract
         await conn.query('INSERT INTO Wallet_transactions (wallet_id, platform_wallet_id, transaction_type, amount) VALUES (?, 1, ?, ?)',[clientWallet.wallet_id, 'escrow_hold', amount]);
         await conn.query('INSERT INTO Contracts (project_id, proposal_id, client_id, freelancer_id, contract_amount, escrow_status) VALUES (?, ?, ?, ?, ?, ?)',[project_id, proposal_id, client_id, freelancer_id, amount, 'held']);
 
-        // 4. Update Statuses
         await conn.query('UPDATE Projects SET status = "in_progress" WHERE project_id = ?', [project_id]);
         await conn.query('UPDATE Project_status_info SET project_status = "In Progress", payment_status = "In Escrow" WHERE project_id = ?', [project_id]);
         await conn.query('UPDATE Proposals SET status = "accepted" WHERE proposal_id = ?', [proposal_id]);
