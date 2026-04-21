@@ -6,7 +6,10 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
+
+// FIX 1: INCREASE JSON PAYLOAD LIMIT TO 10MB FOR BASE64 IMAGES
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 app.use(express.static(path.join(__dirname, '../frontend')));
 
@@ -33,10 +36,10 @@ app.post('/api/auth/register', async (req, res) => {
         await conn.query('INSERT INTO User_wallets (user_id, balance) VALUES (?, 0.00)', [userId]);
         await conn.commit();
         
-        const defaultPfp = 'https://api.dicebear.com/7.x/avataaars/svg?seed=UE';
-        res.json({ success: true, user: { id: userId, name: `${first_name} ${last_name}`, email, profile_pic_url: defaultPfp, balance: 0.00 } });
+        res.json({ success: true, user: { id: userId, name: `${first_name} ${last_name}`, email, profile_pic_url: null, balance: 0.00 } });
     } catch (err) {
         await conn.rollback();
+        console.error("Register Error:", err);
         res.status(400).json({ error: "Registration failed. Email or College ID might already exist." });
     } finally { conn.release(); }
 });
@@ -54,7 +57,10 @@ app.post('/api/auth/login', async (req, res) => {
             const u = users[0];
             res.json({ success: true, user: { id: u.user_id, name: `${u.first_name} ${u.last_name}`, email: u.email, profile_pic_url: u.profile_pic_url, balance: u.balance } });
         } else res.status(401).json({ error: "Invalid credentials." });
-    } catch (err) { res.status(500).json({ error: "Server error." }); }
+    } catch (err) { 
+        console.error("Login Error:", err);
+        res.status(500).json({ error: "Server error." }); 
+    }
 });
 
 app.post('/api/auth/change-password', async (req, res) => {
@@ -65,24 +71,28 @@ app.post('/api/auth/change-password', async (req, res) => {
 
         await pool.query('UPDATE Platform_Users SET password_hash = ? WHERE user_id = ?',[newPassword, userId]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: "Failed to change password." }); }
+    } catch (err) { 
+        console.error("Password Change Error:", err);
+        res.status(500).json({ error: "Failed to change password." }); 
+    }
 });
 
-// --- PROFILE STATS & PFP (NEW) ---
+// --- PROFILE STATS & PFP ---
 app.get('/api/profile/stats/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        // Calculate Average Rating
         const [reviews] = await pool.query('SELECT AVG(rating) as avg_rating, COUNT(*) as review_count FROM Reviews WHERE reviewee_id = ?', [userId]);
-        // Calculate Jobs Won (Contracts created where user is freelancer)
-        const[contracts] = await pool.query('SELECT COUNT(*) as jobs_won FROM Contracts WHERE freelancer_id = ?', [userId]);
+        const [contracts] = await pool.query('SELECT COUNT(*) as jobs_won FROM Contracts WHERE freelancer_id = ?', [userId]);
         
         res.json({
             avgRating: reviews[0].avg_rating ? parseFloat(reviews[0].avg_rating).toFixed(1) : 'No ratings yet',
             reviewCount: reviews[0].review_count,
             jobsWon: contracts[0].jobs_won
         });
-    } catch (err) { res.status(500).json({ error: "Failed to fetch stats." }); }
+    } catch (err) { 
+        console.error("Profile Stats Error:", err);
+        res.status(500).json({ error: "Failed to fetch stats." }); 
+    }
 });
 
 app.post('/api/profile/pfp', async (req, res) => {
@@ -90,7 +100,10 @@ app.post('/api/profile/pfp', async (req, res) => {
         const { userId, url } = req.body;
         await pool.query('UPDATE Platform_Users SET profile_pic_url = ? WHERE user_id = ?', [url, userId]);
         res.json({ success: true, url });
-    } catch (err) { res.status(500).json({ error: "Failed to update profile picture." }); }
+    } catch (err) { 
+        console.error("PFP Upload Error:", err);
+        res.status(500).json({ error: "Failed to update profile picture." }); 
+    }
 });
 
 // --- WALLET TOP-UP ---
@@ -100,7 +113,10 @@ app.post('/api/wallet/topup', async (req, res) => {
         await pool.query('UPDATE User_wallets SET balance = balance + ? WHERE user_id = ?',[amount, user_id]);
         const[wallet] = await pool.query('SELECT balance FROM User_wallets WHERE user_id = ?',[user_id]);
         res.json({ success: true, balance: wallet[0].balance });
-    } catch (err) { res.status(500).json({ error: "Top-up failed." }); }
+    } catch (err) { 
+        console.error("Topup Error:", err);
+        res.status(500).json({ error: "Top-up failed." }); 
+    }
 });
 
 // --- CATEGORIES & GIGS ---
@@ -108,7 +124,10 @@ app.get('/api/categories', async (req, res) => {
     try {
         const [cats] = await pool.query('SELECT * FROM Project_categories ORDER BY category_name ASC');
         res.json(cats);
-    } catch (err) { res.status(500).json({ error: "Failed to load categories." }); }
+    } catch (err) { 
+        console.error("Categories Error:", err);
+        res.status(500).json({ error: "Failed to load categories." }); 
+    }
 });
 
 app.post('/api/gigs', async (req, res) => {
@@ -130,6 +149,7 @@ app.post('/api/gigs', async (req, res) => {
         res.json({ success: true });
     } catch (err) { 
         await conn.rollback();
+        console.error("Post Gig Error:", err);
         res.status(500).json({ error: "Failed to post project." }); 
     } finally { conn.release(); }
 });
@@ -155,14 +175,20 @@ app.get('/api/gigs', async (req, res) => {
         query += ` ORDER BY p.created_at DESC`;
         const [gigs] = await pool.query(query, params);
         res.json(gigs);
-    } catch (err) { res.status(500).json({ error: "Failed to fetch market." }); }
+    } catch (err) { 
+        console.error("Load Market Error:", err);
+        res.status(500).json({ error: "Failed to fetch market." }); 
+    }
 });
 
 app.get('/api/gigs/my/:userId', async (req, res) => {
     try {
         const [gigs] = await pool.query('SELECT * FROM Projects WHERE client_id = ? ORDER BY created_at DESC',[req.params.userId]);
         res.json(gigs);
-    } catch (err) { res.status(500).json({ error: "Failed to fetch your projects." }); }
+    } catch (err) { 
+        console.error("Load My Gigs Error:", err);
+        res.status(500).json({ error: "Failed to fetch your projects." }); 
+    }
 });
 
 // --- PROPOSALS (BIDS) & ESCROW ---
@@ -174,7 +200,10 @@ app.get('/api/bids/:projectId', async (req, res) => {
             WHERE prop.project_id = ? ORDER BY prop.proposal_amount ASC
         `, [req.params.projectId]);
         res.json(bids);
-    } catch (err) { res.status(500).json({ error: "Failed to fetch proposals." }); }
+    } catch (err) { 
+        console.error("Load Bids Error:", err);
+        res.status(500).json({ error: "Failed to fetch proposals." }); 
+    }
 });
 
 app.post('/api/bids', async (req, res) => {
@@ -199,6 +228,7 @@ app.post('/api/bids', async (req, res) => {
         res.json({ success: true });
     } catch (err) { 
         await conn.rollback();
+        console.error("Place Bid Error:", err);
         res.status(400).json({ error: err.message || "Failed to place bid." }); 
     } finally { conn.release(); }
 });
@@ -220,7 +250,7 @@ app.post('/api/gigs/accept', async (req, res) => {
         await conn.query('INSERT INTO Contracts (project_id, proposal_id, client_id, freelancer_id, contract_amount, escrow_status) VALUES (?, ?, ?, ?, ?, ?)',[project_id, proposal_id, client_id, freelancer_id, amount, 'held']);
 
         await conn.query('UPDATE Projects SET status = "in_progress" WHERE project_id = ?', [project_id]);
-        await conn.query('UPDATE Project_status_info SET project_status = "In Progress", payment_status = "In Escrow" WHERE project_id = ?', [project_id]);
+        await conn.query('UPDATE Project_status_info SET project_status = "In Progress", payment_status = "In Escrow" WHERE project_id = ?',[project_id]);
         await conn.query('UPDATE Proposals SET status = "accepted" WHERE proposal_id = ?', [proposal_id]);
         await conn.query('UPDATE Proposals SET status = "rejected" WHERE project_id = ? AND proposal_id != ?',[project_id, proposal_id]);
 
@@ -228,6 +258,7 @@ app.post('/api/gigs/accept', async (req, res) => {
         res.json({ success: true, newBalance: clientWallet.balance - amount });
     } catch (err) { 
         await conn.rollback();
+        console.error("Accept Bid Error:", err);
         res.status(400).json({ error: err.message || "Escrow transaction failed. Check balance." }); 
     } finally { conn.release(); }
 });
