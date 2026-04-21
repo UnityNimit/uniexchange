@@ -6,11 +6,8 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
-
-// FIX 1: INCREASE JSON PAYLOAD LIMIT TO 10MB FOR BASE64 IMAGES
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const pool = mysql.createPool({
@@ -21,46 +18,29 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- AUTHENTICATION & WALLET INIT ---
+// --- AUTHENTICATION ---
 app.post('/api/auth/register', async (req, res) => {
     const conn = await pool.getConnection();
     try {
         const { first_name, last_name, email, password, college_id, dob } = req.body;
-        await conn.beginTransaction();
-        
         const [userRes] = await conn.query(
             'INSERT INTO Platform_Users (role_id, first_name, last_name, email, password_hash, college_id, dob) VALUES (2, ?, ?, ?, ?, ?, ?)',[first_name, last_name, email, password, college_id, dob || null]
         );
-        const userId = userRes.insertId;
-
-        await conn.query('INSERT INTO User_wallets (user_id, balance) VALUES (?, 0.00)', [userId]);
-        await conn.commit();
-        
-        res.json({ success: true, user: { id: userId, name: `${first_name} ${last_name}`, email, profile_pic_url: null, balance: 0.00 } });
+        res.json({ success: true, user: { id: userRes.insertId, name: `${first_name} ${last_name}`, email, profile_pic_url: null } });
     } catch (err) {
-        await conn.rollback();
-        console.error("Register Error:", err);
-        res.status(400).json({ error: "Registration failed. Email or College ID might already exist." });
+        res.status(400).json({ error: "Registration failed. Email or College ID might exist." });
     } finally { conn.release(); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const[users] = await pool.query(`
-            SELECT u.user_id, u.first_name, u.last_name, u.email, u.profile_pic_url, w.balance 
-            FROM Platform_Users u JOIN User_wallets w ON u.user_id = w.user_id 
-            WHERE u.email = ? AND u.password_hash = ?
-        `, [email, password]);
-        
+        const [users] = await pool.query('SELECT * FROM Platform_Users WHERE email = ? AND password_hash = ?', [email, password]);
         if (users.length > 0) {
             const u = users[0];
-            res.json({ success: true, user: { id: u.user_id, name: `${u.first_name} ${u.last_name}`, email: u.email, profile_pic_url: u.profile_pic_url, balance: u.balance } });
+            res.json({ success: true, user: { id: u.user_id, name: `${u.first_name} ${u.last_name}`, email: u.email, profile_pic_url: u.profile_pic_url } });
         } else res.status(401).json({ error: "Invalid credentials." });
-    } catch (err) { 
-        console.error("Login Error:", err);
-        res.status(500).json({ error: "Server error." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Server error." }); }
 });
 
 app.post('/api/auth/change-password', async (req, res) => {
@@ -68,55 +48,43 @@ app.post('/api/auth/change-password', async (req, res) => {
         const { userId, oldPassword, newPassword } = req.body;
         const [users] = await pool.query('SELECT * FROM Platform_Users WHERE user_id = ? AND password_hash = ?', [userId, oldPassword]);
         if (users.length === 0) return res.status(401).json({ error: "Incorrect old password." });
-
         await pool.query('UPDATE Platform_Users SET password_hash = ? WHERE user_id = ?',[newPassword, userId]);
         res.json({ success: true });
-    } catch (err) { 
-        console.error("Password Change Error:", err);
-        res.status(500).json({ error: "Failed to change password." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to change password." }); }
 });
 
-// --- PROFILE STATS & PFP ---
-app.get('/api/profile/stats/:userId', async (req, res) => {
-    try {
-        const userId = req.params.userId;
-        const [reviews] = await pool.query('SELECT AVG(rating) as avg_rating, COUNT(*) as review_count FROM Reviews WHERE reviewee_id = ?', [userId]);
-        const [contracts] = await pool.query('SELECT COUNT(*) as jobs_won FROM Contracts WHERE freelancer_id = ?', [userId]);
-        
-        res.json({
-            avgRating: reviews[0].avg_rating ? parseFloat(reviews[0].avg_rating).toFixed(1) : 'No ratings yet',
-            reviewCount: reviews[0].review_count,
-            jobsWon: contracts[0].jobs_won
-        });
-    } catch (err) { 
-        console.error("Profile Stats Error:", err);
-        res.status(500).json({ error: "Failed to fetch stats." }); 
-    }
-});
-
+// --- PROFILE & STATS ---
 app.post('/api/profile/pfp', async (req, res) => {
     try {
         const { userId, url } = req.body;
         await pool.query('UPDATE Platform_Users SET profile_pic_url = ? WHERE user_id = ?', [url, userId]);
         res.json({ success: true, url });
-    } catch (err) { 
-        console.error("PFP Upload Error:", err);
-        res.status(500).json({ error: "Failed to update profile picture." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to update profile picture." }); }
 });
 
-// --- WALLET TOP-UP ---
-app.post('/api/wallet/topup', async (req, res) => {
+app.get('/api/profile/stats/:userId', async (req, res) => {
     try {
-        const { user_id, amount } = req.body;
-        await pool.query('UPDATE User_wallets SET balance = balance + ? WHERE user_id = ?',[amount, user_id]);
-        const[wallet] = await pool.query('SELECT balance FROM User_wallets WHERE user_id = ?',[user_id]);
-        res.json({ success: true, balance: wallet[0].balance });
-    } catch (err) { 
-        console.error("Topup Error:", err);
-        res.status(500).json({ error: "Top-up failed." }); 
-    }
+        const userId = req.params.userId;
+        const [reviews] = await pool.query('SELECT AVG(rating) as avg_rating FROM Reviews WHERE reviewee_id = ?', [userId]);
+        const [gigs] = await pool.query('SELECT COUNT(*) as total_posted FROM Projects WHERE client_id = ?', [userId]);
+        
+        // Earnings & Spendings calculation natively from Contracts Table
+        const [earned] = await pool.query(`SELECT SUM(c.contract_amount) as total_earned FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.freelancer_id = ? AND p.status = 'completed'`, [userId]);
+        const [given] = await pool.query(`SELECT SUM(c.contract_amount) as total_given, AVG(c.contract_amount) as avg_given FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.client_id = ? AND p.status = 'completed'`, [userId]);
+        const [user] = await pool.query('SELECT first_name, last_name, profile_pic_url, created_at FROM Platform_Users WHERE user_id = ?', [userId]);
+
+        res.json({
+            firstName: user[0].first_name,
+            lastName: user[0].last_name,
+            pfp: user[0].profile_pic_url,
+            memberSince: user[0].created_at,
+            avgRating: reviews[0].avg_rating ? parseFloat(reviews[0].avg_rating).toFixed(1) : 'No ratings',
+            gigsPosted: gigs[0].total_posted || 0,
+            totalEarned: earned[0].total_earned || 0,
+            totalGiven: given[0].total_given || 0,
+            avgGiven: given[0].avg_given ? parseFloat(given[0].avg_given).toFixed(2) : 0
+        });
+    } catch (err) { res.status(500).json({ error: "Failed to fetch stats." }); }
 });
 
 // --- CATEGORIES & GIGS ---
@@ -124,74 +92,55 @@ app.get('/api/categories', async (req, res) => {
     try {
         const [cats] = await pool.query('SELECT * FROM Project_categories ORDER BY category_name ASC');
         res.json(cats);
-    } catch (err) { 
-        console.error("Categories Error:", err);
-        res.status(500).json({ error: "Failed to load categories." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to load categories." }); }
 });
 
 app.post('/api/gigs', async (req, res) => {
-    const conn = await pool.getConnection();
     try {
         const { client_id, category_id, title, description, budget, deadline } = req.body;
-        await conn.beginTransaction();
-        
-        const [result] = await conn.query(
-            'INSERT INTO Projects (client_id, category_id, title, description, budget, deadline) VALUES (?, ?, ?, ?, ?, ?)',[client_id, category_id, title, description, budget, deadline]
-        );
-        const projectId = result.insertId;
-
-        await conn.query(
-            'INSERT INTO Project_status_info (project_id, project_status, payment_status) VALUES (?, ?, ?)',[projectId, 'Open for Bidding', 'Unpaid']
-        );
-
-        await conn.commit();
+        await pool.query('INSERT INTO Projects (client_id, category_id, title, description, budget, deadline) VALUES (?, ?, ?, ?, ?, ?)',[client_id, category_id, title, description, budget, deadline]);
         res.json({ success: true });
-    } catch (err) { 
-        await conn.rollback();
-        console.error("Post Gig Error:", err);
-        res.status(500).json({ error: "Failed to post project." }); 
-    } finally { conn.release(); }
+    } catch (err) { res.status(500).json({ error: "Failed to post project." }); }
 });
 
 app.get('/api/gigs', async (req, res) => {
     try {
         const searchQuery = req.query.q;
         let query = `
-            SELECT p.project_id, p.title, p.description, p.budget, p.deadline, 
-                   u.first_name, u.last_name, dmp.current_market_value, dmp.total_proposals
+            SELECT p.project_id, p.title, p.description, p.budget, p.deadline, p.created_at,
+                   u.user_id as client_id, u.first_name, u.last_name, u.profile_pic_url, 
+                   dmp.current_market_value, dmp.total_proposals
             FROM Projects p
             JOIN Platform_Users u ON p.client_id = u.user_id
             JOIN DynamicMarketPricing dmp ON p.project_id = dmp.project_id
             WHERE p.status = 'open'
         `;
         let params =[];
-
         if (searchQuery) {
             query += ` AND (p.title LIKE ? OR p.description LIKE ?)`;
             params.push(`%${searchQuery}%`, `%${searchQuery}%`);
         }
-        
         query += ` ORDER BY p.created_at DESC`;
         const [gigs] = await pool.query(query, params);
         res.json(gigs);
-    } catch (err) { 
-        console.error("Load Market Error:", err);
-        res.status(500).json({ error: "Failed to fetch market." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to fetch market." }); }
 });
 
+// Get My Gigs (Now includes Contract info for In Progress/Completed gigs)
 app.get('/api/gigs/my/:userId', async (req, res) => {
     try {
-        const [gigs] = await pool.query('SELECT * FROM Projects WHERE client_id = ? ORDER BY created_at DESC',[req.params.userId]);
+        const [gigs] = await pool.query(`
+            SELECT p.*, c.contract_amount, c.contract_id, u.first_name as f_first, u.last_name as f_last 
+            FROM Projects p 
+            LEFT JOIN Contracts c ON p.project_id = c.project_id
+            LEFT JOIN Platform_Users u ON c.freelancer_id = u.user_id
+            WHERE p.client_id = ? ORDER BY p.created_at DESC
+        `,[req.params.userId]);
         res.json(gigs);
-    } catch (err) { 
-        console.error("Load My Gigs Error:", err);
-        res.status(500).json({ error: "Failed to fetch your projects." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to fetch your projects." }); }
 });
 
-// --- PROPOSALS (BIDS) & ESCROW ---
+// --- PROPOSALS & CASH CONTRACTS ---
 app.get('/api/bids/:projectId', async (req, res) => {
     try {
         const[bids] = await pool.query(`
@@ -200,70 +149,72 @@ app.get('/api/bids/:projectId', async (req, res) => {
             WHERE prop.project_id = ? ORDER BY prop.proposal_amount ASC
         `, [req.params.projectId]);
         res.json(bids);
-    } catch (err) { 
-        console.error("Load Bids Error:", err);
-        res.status(500).json({ error: "Failed to fetch proposals." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to fetch proposals." }); }
 });
 
 app.post('/api/bids', async (req, res) => {
-    const conn = await pool.getConnection();
     try {
         const { project_id, freelancer_id, amount } = req.body;
-        await conn.beginTransaction();
-
-        const[gig] = await conn.query('SELECT client_id, deadline FROM Projects WHERE project_id = ? FOR UPDATE',[project_id]);
+        const[gig] = await pool.query('SELECT client_id, deadline FROM Projects WHERE project_id = ?',[project_id]);
         if (gig.length === 0) throw new Error("Project not found.");
         if (gig[0].client_id === freelancer_id) throw new Error("You cannot bid on your own project.");
 
-        const deadline = new Date(gig[0].deadline);
-        const now = new Date();
+        // Extend deadline by 1 hr if bid placed within final 30 mins
+        const deadline = new Date(gig[0].deadline), now = new Date();
         const diffMins = (deadline - now) / 1000 / 60;
         if (diffMins > 0 && diffMins < 30) {
-            await conn.query('UPDATE Projects SET deadline = DATE_ADD(deadline, INTERVAL 1 HOUR) WHERE project_id = ?', [project_id]);
+            await pool.query('UPDATE Projects SET deadline = DATE_ADD(deadline, INTERVAL 1 HOUR) WHERE project_id = ?', [project_id]);
         }
-
-        await conn.query('INSERT INTO Proposals (project_id, freelancer_id, proposal_amount) VALUES (?, ?, ?)',[project_id, freelancer_id, amount]);
-        await conn.commit();
+        await pool.query('INSERT INTO Proposals (project_id, freelancer_id, proposal_amount) VALUES (?, ?, ?)',[project_id, freelancer_id, amount]);
         res.json({ success: true });
-    } catch (err) { 
-        await conn.rollback();
-        console.error("Place Bid Error:", err);
-        res.status(400).json({ error: err.message || "Failed to place bid." }); 
-    } finally { conn.release(); }
+    } catch (err) { res.status(400).json({ error: err.message || "Failed to place bid." }); }
 });
 
+// Accept Bid (Creates Cash Contract)
 app.post('/api/gigs/accept', async (req, res) => {
     const conn = await pool.getConnection();
     try {
         const { project_id, proposal_id, client_id, freelancer_id, amount } = req.body;
         await conn.beginTransaction();
 
-        const [wallet] = await conn.query('SELECT wallet_id, balance FROM User_wallets WHERE user_id = ? FOR UPDATE', [client_id]);
-        const clientWallet = wallet[0];
-        if (clientWallet.balance < amount) throw new Error("Insufficient wallet balance for escrow.");
-
-        await conn.query('UPDATE User_wallets SET balance = balance - ? WHERE wallet_id = ?',[amount, clientWallet.wallet_id]);
-        await conn.query('UPDATE Platform_wallet SET balance = balance + ? WHERE wallet_id = 1',[amount]);
-
-        await conn.query('INSERT INTO Wallet_transactions (wallet_id, platform_wallet_id, transaction_type, amount) VALUES (?, 1, ?, ?)',[clientWallet.wallet_id, 'escrow_hold', amount]);
-        await conn.query('INSERT INTO Contracts (project_id, proposal_id, client_id, freelancer_id, contract_amount, escrow_status) VALUES (?, ?, ?, ?, ?, ?)',[project_id, proposal_id, client_id, freelancer_id, amount, 'held']);
-
-        await conn.query('UPDATE Projects SET status = "in_progress" WHERE project_id = ?', [project_id]);
-        await conn.query('UPDATE Project_status_info SET project_status = "In Progress", payment_status = "In Escrow" WHERE project_id = ?',[project_id]);
+        // 1. Create Contract (Escrow status ignored since payment is cash)
+        await conn.query('INSERT INTO Contracts (project_id, proposal_id, client_id, freelancer_id, contract_amount, escrow_status) VALUES (?, ?, ?, ?, ?, ?)',[project_id, proposal_id, client_id, freelancer_id, amount, 'pending']);
+        
+        // 2. Update Statuses
+        await conn.query('UPDATE Projects SET status = "in_progress" WHERE project_id = ?',[project_id]);
         await conn.query('UPDATE Proposals SET status = "accepted" WHERE proposal_id = ?', [proposal_id]);
         await conn.query('UPDATE Proposals SET status = "rejected" WHERE project_id = ? AND proposal_id != ?',[project_id, proposal_id]);
 
         await conn.commit();
-        res.json({ success: true, newBalance: clientWallet.balance - amount });
+        res.json({ success: true });
     } catch (err) { 
         await conn.rollback();
-        console.error("Accept Bid Error:", err);
-        res.status(400).json({ error: err.message || "Escrow transaction failed. Check balance." }); 
+        res.status(400).json({ error: "Transaction failed." }); 
+    } finally { conn.release(); }
+});
+
+// Verify Complete & Rate Freelancer
+app.post('/api/gigs/complete', async (req, res) => {
+    const conn = await pool.getConnection();
+    try {
+        const { project_id, client_id, contract_id, freelancer_id, rating } = req.body;
+        await conn.beginTransaction();
+
+        await conn.query('UPDATE Projects SET status = "completed" WHERE project_id = ?', [project_id]);
+        await conn.query('UPDATE Contracts SET completed_at = CURRENT_TIMESTAMP WHERE contract_id = ?', [contract_id]);
+
+        if (rating && rating >= 1 && rating <= 5) {
+            await conn.query('INSERT INTO Reviews (contract_id, reviewer_id, reviewee_id, rating) VALUES (?, ?, ?, ?)',[contract_id, client_id, freelancer_id, rating]);
+        }
+
+        await conn.commit();
+        res.json({ success: true });
+    } catch (err) { 
+        await conn.rollback();
+        res.status(400).json({ error: "Failed to complete gig." }); 
     } finally { conn.release(); }
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

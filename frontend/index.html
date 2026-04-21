@@ -6,9 +6,7 @@
     <title>UniExchange</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: { extend: { colors: { brand: '#18181b', brandHover: '#27272a', accent: '#2563eb' }, fontFamily: { sans:['Inter', 'system-ui', 'sans-serif'] } } }
-        }
+        tailwind.config = { theme: { extend: { colors: { brand: '#18181b', brandHover: '#27272a', accent: '#2563eb' }, fontFamily: { sans:['Inter', 'system-ui', 'sans-serif'] } } } }
     </script>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,22 +18,36 @@
         <p id="loader-text" class="mt-4 text-zinc-900 font-medium text-sm tracking-wide text-center px-4">Processing</p>
     </div>
 
-    <!-- Responsive Header -->
+    <!-- Public Profile Modal -->
+    <div id="public-profile-modal" class="fixed inset-0 z-50 bg-zinc-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl border border-zinc-200 max-w-sm w-full p-6 relative">
+            <button onclick="closePublicProfile()" class="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 text-xl leading-none">&times;</button>
+            <div class="flex flex-col items-center text-center mt-2">
+                <div class="w-20 h-20 rounded-full border border-zinc-200 bg-zinc-100 overflow-hidden mb-4">
+                    <img id="pub-pfp" src="" class="w-full h-full object-cover hidden">
+                    <div id="pub-initials" class="w-full h-full flex items-center justify-center text-zinc-400 text-2xl font-medium"></div>
+                </div>
+                <h3 id="pub-name" class="text-xl font-bold text-zinc-900"></h3>
+                <p class="text-xs text-zinc-500 mt-1 uppercase tracking-wider font-semibold">Member since <span id="pub-date"></span></p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-zinc-100">
+                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Avg Rating</p><p id="pub-rating" class="text-lg font-bold text-zinc-900"></p></div>
+                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Gigs Posted</p><p id="pub-posted" class="text-lg font-bold text-zinc-900"></p></div>
+                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Total Paid Out</p><p id="pub-paid" class="text-lg font-bold text-emerald-600"></p></div>
+                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Total Earned</p><p id="pub-earned" class="text-lg font-bold text-accent"></p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
     <header class="bg-white border-b border-zinc-200 sticky top-0 z-40">
         <div class="max-w-5xl mx-auto px-4 sm:px-6">
-            <!-- Top Row: Logo & Balance -->
             <div class="h-14 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-zinc-900 text-white flex items-center justify-center text-xs font-bold rounded-sm">UE</div>
                     <h1 class="text-base font-semibold text-zinc-900 tracking-tight">UniExchange</h1>
                 </div>
-                <div id="wallet-display" class="hidden items-center gap-2 text-sm font-medium">
-                    <span class="text-zinc-500 hidden sm:inline">Balance:</span>
-                    <span id="nav-balance" class="text-zinc-900 bg-zinc-100 px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm">₹0.00</span>
-                </div>
             </div>
-            
-            <!-- Bottom Row: Scrollable Navigation -->
             <nav id="top-nav" class="hidden flex-row items-center gap-4 sm:gap-6 text-sm font-medium text-zinc-500 overflow-x-auto no-scrollbar">
                 <button onclick="switchTab('market')" id="btn-market" class="pb-3 border-b-2 border-transparent hover:text-zinc-900 transition-colors whitespace-nowrap">Marketplace</button>
                 <button onclick="switchTab('my-gigs')" id="btn-my-gigs" class="pb-3 border-b-2 border-transparent hover:text-zinc-900 transition-colors whitespace-nowrap">Gigs & Bids</button>
@@ -48,53 +60,42 @@
         
         <!-- AUTH SECTION -->
         <section id="auth-section" class="max-w-sm mx-auto mt-6 sm:mt-10 w-full">
-            <div class="text-center mb-8">
-                <h2 class="text-xl font-semibold text-zinc-900">Welcome to UniExchange</h2>
-                <p class="text-sm text-zinc-500 mt-1">Enter your details to continue.</p>
-            </div>
+            <div class="text-center mb-8"><h2 class="text-xl font-semibold text-zinc-900">Welcome to UniExchange</h2></div>
             <div id="auth-error" class="hidden bg-red-50 text-red-600 px-4 py-3 text-sm mb-6 border border-red-100 rounded-md"></div>
             
             <div class="space-y-4 w-full" id="login-fields">
-                <input type="email" id="l-email" placeholder="University Email" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none transition-all text-sm rounded-md">
-                <input type="password" id="l-password" placeholder="Password" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none transition-all text-sm rounded-md">
-                <div class="pt-2 flex flex-col gap-3">
-                    <button onclick="login()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 text-sm font-medium rounded-md">Log In</button>
-                    <button onclick="toggleAuth()" class="text-sm text-zinc-500 hover:text-zinc-900 pb-4">Need an account? Register</button>
-                </div>
+                <input type="email" id="l-email" placeholder="University Email" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
+                <input type="password" id="l-password" placeholder="Password" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
+                <button onclick="login()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 text-sm font-medium rounded-md mt-2">Log In</button>
+                <button onclick="toggleAuth()" class="w-full text-sm text-zinc-500 hover:text-zinc-900 pb-4">Need an account? Register</button>
             </div>
 
             <div class="space-y-4 hidden w-full" id="register-fields">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input type="text" id="r-fname" placeholder="First Name" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none text-sm rounded-md">
-                    <input type="text" id="r-lname" placeholder="Last Name" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none text-sm rounded-md">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="r-fname" placeholder="First Name" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
+                    <input type="text" id="r-lname" placeholder="Last Name" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
                 </div>
-                <input type="text" id="r-cid" placeholder="College ID" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none text-sm rounded-md">
-                <input type="date" id="r-dob" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none text-sm rounded-md text-zinc-500">
-                <input type="email" id="r-email" placeholder="University Email" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none text-sm rounded-md">
-                <input type="password" id="r-password" placeholder="Password" class="w-full px-3 py-2.5 bg-white border border-zinc-300 focus:border-zinc-900 outline-none text-sm rounded-md">
-                <div class="pt-2 flex flex-col gap-3">
-                    <button onclick="register()" class="w-full bg-white border border-zinc-300 hover:bg-zinc-50 text-zinc-900 py-2.5 text-sm font-medium rounded-md">Create Account</button>
-                    <button onclick="toggleAuth()" class="text-sm text-zinc-500 hover:text-zinc-900 pb-4">Back to Login</button>
-                </div>
+                <input type="text" id="r-cid" placeholder="College ID" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
+                <input type="date" id="r-dob" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm text-zinc-500">
+                <input type="email" id="r-email" placeholder="University Email" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
+                <input type="password" id="r-password" placeholder="Password" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
+                <button onclick="register()" class="w-full bg-white border border-zinc-300 hover:bg-zinc-50 text-zinc-900 py-2.5 text-sm font-medium rounded-md mt-2">Create Account</button>
+                <button onclick="toggleAuth()" class="w-full text-sm text-zinc-500 hover:text-zinc-900 pb-4">Back to Login</button>
             </div>
         </section>
 
         <!-- DASHBOARD SECTION -->
         <section id="dashboard-section" class="hidden">
-            
             <!-- TAB 1: Market -->
             <div id="tab-market" class="space-y-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-200 pb-4 mb-4 gap-4">
-                    <div>
-                        <h2 class="text-lg font-semibold text-zinc-900">Live Market</h2>
-                        <p class="text-sm text-zinc-500 mt-1">Browse open tasks and place your bids.</p>
-                    </div>
+                    <div><h2 class="text-lg font-semibold text-zinc-900">Live Market</h2></div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
-                        <input type="text" id="search-query" placeholder="Search gigs..." class="w-full sm:w-64 px-3 py-2 sm:py-1.5 text-sm border border-zinc-300 focus:border-zinc-900 outline-none rounded-md">
-                        <button onclick="loadMarket()" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium px-4 py-2 sm:py-1.5 rounded-md border border-zinc-200 transition-colors shrink-0">Search</button>
+                        <input type="text" id="search-query" placeholder="Search gigs..." class="w-full sm:w-64 px-3 py-2 sm:py-1.5 text-sm border border-zinc-300 outline-none rounded-md">
+                        <button onclick="loadMarket()" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium px-4 py-2 sm:py-1.5 rounded-md border border-zinc-200 shrink-0">Search</button>
                     </div>
                 </div>
-                <div id="market-container" class="grid gap-4"></div>
+                <div id="market-container" class="grid gap-5"></div>
             </div>
 
             <!-- TAB 2: Gigs & Bids -->
@@ -102,27 +103,19 @@
                 <div class="bg-white p-4 sm:p-6 border border-zinc-200 rounded-md">
                     <h3 class="text-base font-semibold text-zinc-900 mb-4">Post a New Gig</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        <input type="text" id="gig-title" placeholder="Gig Title" class="col-span-1 sm:col-span-2 md:col-span-3 px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 focus:border-zinc-900 outline-none rounded-md">
-                        <textarea id="gig-desc" placeholder="Details and requirements" rows="2" class="col-span-1 sm:col-span-2 md:col-span-3 px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 focus:border-zinc-900 outline-none rounded-md resize-none"></textarea>
-                        
-                        <select id="gig-category" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 focus:border-zinc-900 outline-none rounded-md bg-white w-full">
-                            <option value="" disabled selected>Select Category</option>
-                        </select>
-                        <input type="number" id="gig-budget" placeholder="Base Budget (₹)" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 focus:border-zinc-900 outline-none rounded-md w-full">
-                        <input type="datetime-local" id="gig-deadline" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 focus:border-zinc-900 outline-none rounded-md text-zinc-600 w-full">
-                        
+                        <input type="text" id="gig-title" placeholder="Gig Title" class="col-span-1 sm:col-span-2 md:col-span-3 px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md">
+                        <textarea id="gig-desc" placeholder="Details and requirements" rows="2" class="col-span-1 sm:col-span-2 md:col-span-3 px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md resize-none"></textarea>
+                        <select id="gig-category" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md bg-white w-full"><option value="" disabled selected>Select Category</option></select>
+                        <input type="number" id="gig-budget" placeholder="Cash Budget (₹)" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md w-full">
+                        <input type="datetime-local" id="gig-deadline" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md text-zinc-600 w-full">
                         <div class="col-span-1 sm:col-span-2 md:col-span-3 flex justify-end mt-2">
-                            <button onclick="postGig()" class="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium rounded-md px-6 py-2.5 sm:py-2 transition-colors">Publish Gig</button>
+                            <button onclick="postGig()" class="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium rounded-md px-6 py-2.5 sm:py-2">Publish Gig</button>
                         </div>
                     </div>
                 </div>
-
                 <div>
                     <div class="flex items-end justify-between border-b border-zinc-200 pb-4 mb-4">
-                        <div>
-                            <h2 class="text-lg font-semibold text-zinc-900">Your Postings</h2>
-                            <p class="text-sm text-zinc-500 mt-1">Manage gigs and initiate escrow.</p>
-                        </div>
+                        <h2 class="text-lg font-semibold text-zinc-900">Your Postings</h2>
                         <button onclick="loadMyGigs()" class="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors">Refresh</button>
                     </div>
                     <div id="my-gigs-container" class="grid gap-4"></div>
@@ -132,68 +125,64 @@
             <!-- TAB 3: Profile -->
             <div id="tab-profile" class="hidden">
                 <div class="max-w-2xl w-full">
-                    <h2 class="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-200 pb-4">Profile Settings</h2>
+                    <h2 class="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-200 pb-4">Profile & Cash Statistics</h2>
                     
-                    <!-- Identity & Stats -->
                     <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10 text-center sm:text-left">
-                        <div class="relative w-24 h-24 sm:w-20 sm:h-20 rounded-full border border-zinc-200 bg-zinc-100 shrink-0 overflow-hidden">
-                            <img id="profile-img" src="" alt="Profile" class="w-full h-full object-cover hidden">
+                        <div class="relative w-24 h-24 rounded-full border border-zinc-200 bg-zinc-100 shrink-0 overflow-hidden">
+                            <img id="profile-img" src="" class="w-full h-full object-cover hidden">
                             <div id="profile-initials" class="w-full h-full flex items-center justify-center text-zinc-400 text-2xl font-medium">UE</div>
                         </div>
-                        <div class="flex-grow sm:pt-1 w-full">
+                        <div class="flex-grow w-full">
                             <h3 id="profile-name" class="font-semibold text-xl text-zinc-900">-</h3>
-                            <p id="profile-email" class="text-sm text-zinc-500 mb-4">-</p>
+                            <p id="profile-email" class="text-sm text-zinc-500 mb-6">-</p>
                             
-                            <div class="flex justify-center sm:justify-start gap-6">
-                                <div class="flex flex-col">
+                            <div class="grid grid-cols-2 sm:flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Avg Rating</span>
-                                    <span id="stat-rating" class="font-semibold text-zinc-900">-</span>
+                                    <span id="stat-rating" class="font-semibold text-zinc-900 text-lg">-</span>
                                 </div>
-                                <div class="flex flex-col border-l border-zinc-200 pl-6">
-                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Jobs Won</span>
-                                    <span id="stat-jobs" class="font-semibold text-zinc-900">-</span>
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Gigs Posted</span>
+                                    <span id="stat-jobs" class="font-semibold text-zinc-900 text-lg">-</span>
+                                </div>
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Avg Paid Out</span>
+                                    <span id="stat-avg-given" class="font-semibold text-zinc-900 text-lg">-</span>
+                                </div>
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Paid Out</span>
+                                    <span id="stat-given" class="font-semibold text-emerald-600 text-lg">-</span>
+                                </div>
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto col-span-2">
+                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Earned</span>
+                                    <span id="stat-earned" class="font-semibold text-accent text-lg">-</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Manual PFP Upload -->
-                    <div class="mb-8 bg-white p-5 sm:p-6 border border-zinc-200 rounded-md">
+                    <div class="mb-8 bg-white p-5 border border-zinc-200 rounded-md">
                         <h3 class="text-sm font-medium text-zinc-900 mb-1">Profile Picture</h3>
                         <p class="text-xs text-zinc-500 mb-4">Upload an image or GIF (Max 5MB).</p>
                         <div class="flex flex-col sm:flex-row gap-3">
-                            <input type="file" id="pfp-file" accept="image/*" class="w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 border border-zinc-300 rounded-md bg-white cursor-pointer outline-none transition-colors">
-                            <button onclick="uploadProfilePic()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium px-6 py-2 rounded-md transition-colors whitespace-nowrap">Upload Image</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Wallet Top-Up -->
-                    <div class="mb-8 bg-zinc-50 p-5 sm:p-6 border border-zinc-200 rounded-md">
-                        <h3 class="text-sm font-medium text-zinc-900 mb-1">Wallet Management</h3>
-                        <p class="text-xs text-zinc-500 mb-4">Add funds to securely escrow payments.</p>
-                        <div class="flex flex-col sm:flex-row gap-3 max-w-sm">
-                            <input type="number" id="topup-amount" placeholder="Amount (₹)" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 focus:border-zinc-900 outline-none rounded-md">
-                            <button onclick="topUpWallet()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors whitespace-nowrap">Add Funds</button>
+                            <input type="file" id="pfp-file" accept="image/*" class="w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 border border-zinc-300 rounded-md bg-white cursor-pointer outline-none">
+                            <button onclick="uploadProfilePic()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium px-6 py-2 rounded-md whitespace-nowrap">Upload Image</button>
                         </div>
                     </div>
 
-                    <!-- Security -->
                     <div class="mb-10">
                         <h3 class="text-sm font-medium text-zinc-900 mb-4">Security</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-                            <input type="password" id="old-password" placeholder="Current Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 focus:border-zinc-900 outline-none rounded-md">
-                            <input type="password" id="new-password" placeholder="New Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 focus:border-zinc-900 outline-none rounded-md">
-                            <button onclick="changePassword()" class="col-span-1 sm:col-span-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium py-2 rounded-md border border-zinc-200 transition-colors">Update Password</button>
+                            <input type="password" id="old-password" placeholder="Current Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 outline-none rounded-md">
+                            <input type="password" id="new-password" placeholder="New Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 outline-none rounded-md">
+                            <button onclick="changePassword()" class="col-span-1 sm:col-span-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium py-2 rounded-md border border-zinc-200">Update Password</button>
                         </div>
                     </div>
-
-                    <!-- Danger Zone -->
                     <div class="pt-6 border-t border-zinc-200 text-center sm:text-left pb-10">
-                        <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium transition-colors w-full sm:w-auto py-2 sm:py-0 border border-red-200 sm:border-none rounded-md sm:rounded-none">Log Out of UniExchange</button>
+                        <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium transition-colors w-full sm:w-auto py-2 sm:py-0 border border-red-200 sm:border-none rounded-md sm:rounded-none">Log Out</button>
                     </div>
                 </div>
             </div>
-
         </section>
     </main>
 
