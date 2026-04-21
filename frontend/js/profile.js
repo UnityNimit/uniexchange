@@ -1,13 +1,11 @@
 async function loadProfile() {
-    // Load local storage details first for instant UI
     document.getElementById('profile-name').innerText = user.name || "Unknown";
     document.getElementById('profile-email').innerText = user.email || "Unknown";
     
-    // Handle Profile Picture vs Initials
     const imgEl = document.getElementById('profile-img');
     const initialsEl = document.getElementById('profile-initials');
     
-    if (user.profile_pic_url) {
+    if (user.profile_pic_url && user.profile_pic_url.length > 10) {
         imgEl.src = user.profile_pic_url;
         imgEl.classList.remove('hidden');
         initialsEl.classList.add('hidden');
@@ -18,7 +16,6 @@ async function loadProfile() {
         initialsEl.classList.remove('hidden');
     }
 
-    // Fetch Database Stats
     try {
         const res = await fetch(`${API}/api/profile/stats/${user.id}`);
         const data = await res.json();
@@ -28,28 +25,56 @@ async function loadProfile() {
     } catch (e) { console.error("Failed to load profile stats"); }
 }
 
-async function updateProfilePic() {
-    const url = document.getElementById('pfp-url').value;
-    if (!url) return alert("Please enter a valid image or GIF URL.");
+async function uploadProfilePic() {
+    const fileInput = document.getElementById('pfp-file');
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        return alert("Please select an image file first.");
+    }
+    
+    const file = fileInput.files[0];
+    
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+        return alert("File is too large. Please select an image under 5MB.");
+    }
 
-    showLoader("Updating profile visual");
-    try {
-        const res = await fetch(`${API}/api/profile/pfp`, {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userId: user.id, url })
-        });
-        const data = await res.json();
+    showLoader("Uploading profile picture to database");
+    
+    // Convert file to Base64 String
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    
+    reader.onloadend = async function() {
+        const base64String = reader.result;
         
-        if (data.success) {
-            user.profile_pic_url = data.url;
-            localStorage.setItem('user', JSON.stringify(user));
-            document.getElementById('pfp-url').value = '';
-            loadProfile(); // Re-render the image instantly
-        } else {
-            alert(data.error);
-        }
-    } catch (e) { alert("Error updating profile picture."); }
-    hideLoader();
+        try {
+            const res = await fetch(`${API}/api/profile/pfp`, {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: user.id, url: base64String }) // Reusing the 'url' backend logic to store the string
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                user.profile_pic_url = data.url;
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                // Clear the input and reload the profile UI
+                fileInput.value = '';
+                loadProfile(); 
+                alert("Profile picture updated successfully.");
+            } else {
+                alert(data.error);
+            }
+        } catch (e) { alert("Error uploading image. Is the server running?"); }
+        hideLoader();
+    };
+    
+    reader.onerror = function() {
+        hideLoader();
+        alert("Error reading file.");
+    };
 }
 
 async function topUpWallet() {

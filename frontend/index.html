@@ -157,13 +157,15 @@
                         </div>
                     </div>
 
-                    <!-- Change Profile Picture URL -->
+                    <!-- Manual Profile Picture Upload -->
                     <div class="mb-10 bg-white p-6 border border-zinc-200 rounded-md">
                         <h3 class="text-sm font-medium text-zinc-900 mb-1">Profile Picture</h3>
-                        <p class="text-xs text-zinc-500 mb-4">Paste a direct link to an image or GIF.</p>
-                        <div class="flex gap-2 max-w-md">
-                            <input type="url" id="pfp-url" placeholder="https://example.com/image.gif" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 focus:border-zinc-900 outline-none rounded-md">
-                            <button onclick="updateProfilePic()" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium px-4 py-2 rounded-md transition-colors border border-zinc-200 whitespace-nowrap">Update Image</button>
+                        <p class="text-xs text-zinc-500 mb-4">Upload an image or GIF (Max 5MB). It will be saved securely in the database.</p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <!-- Tailwind File Input Styling -->
+                            <input type="file" id="pfp-file" accept="image/*" class="w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 border border-zinc-300 rounded-md bg-white cursor-pointer outline-none focus:border-zinc-900 transition-colors">
+                            
+                            <button onclick="uploadProfilePic()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium px-6 py-2 rounded-md transition-colors whitespace-nowrap">Upload Image</button>
                         </div>
                     </div>
                     
