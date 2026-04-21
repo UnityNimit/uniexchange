@@ -16,10 +16,8 @@ function hideLoader() {
 
 function showError(msg) {
     const errDiv = document.getElementById('auth-error');
-    if(errDiv) {
-        errDiv.innerText = msg;
-        errDiv.classList.remove('hidden');
-    } else alert(msg);
+    if(errDiv) { errDiv.innerText = msg; errDiv.classList.remove('hidden'); }
+    else alert(msg);
 }
 
 function toggleAuth() {
@@ -27,11 +25,9 @@ function toggleAuth() {
     const loginFields = document.getElementById('login-fields');
     const regFields = document.getElementById('register-fields');
     if(loginFields.classList.contains('hidden')) {
-        loginFields.classList.remove('hidden');
-        regFields.classList.add('hidden');
+        loginFields.classList.remove('hidden'); regFields.classList.add('hidden');
     } else {
-        loginFields.classList.add('hidden');
-        regFields.classList.remove('hidden');
+        loginFields.classList.add('hidden'); regFields.classList.remove('hidden');
     }
 }
 
@@ -58,7 +54,7 @@ function switchTab(tab) {
     document.getElementById('tab-my-gigs').classList.add('hidden');
     document.getElementById('tab-profile').classList.add('hidden');
     
-    const buttons = ['btn-market', 'btn-my-gigs', 'btn-profile'];
+    const buttons =['btn-market', 'btn-my-gigs', 'btn-profile'];
     buttons.forEach(id => {
         const btn = document.getElementById(id);
         btn.classList.remove('border-zinc-900', 'text-zinc-900');

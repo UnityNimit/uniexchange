@@ -65,23 +65,23 @@ async function loadMyGigs() {
             let bidsHTML = bids.length === 0 
                 ? '<p class="text-xs text-zinc-500">No proposals received yet.</p>' 
                 : bids.map(b => `
-                <div class="flex items-center justify-between py-2 border-b border-zinc-100 last:border-0">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 sm:py-2 border-b border-zinc-100 last:border-0 gap-2">
                     <div class="text-sm">
                         <strong class="font-medium text-zinc-900">${b.first_name} ${b.last_name}</strong>
-                        <span class="text-zinc-500 ml-1">bid ₹${b.proposal_amount}</span>
+                        <span class="text-zinc-500 block sm:inline mt-0.5 sm:mt-0 sm:ml-1">bid ₹${b.proposal_amount}</span>
                     </div>
-                    ${isOpen ? `<button onclick="acceptBid(${g.project_id}, ${b.proposal_id}, ${b.freelancer_id}, ${b.proposal_amount})" class="text-xs font-medium text-accent hover:text-blue-700 transition-colors">Accept & Escrow</button>` : ''}
+                    ${isOpen ? `<button onclick="acceptBid(${g.project_id}, ${b.proposal_id}, ${b.freelancer_id}, ${b.proposal_amount})" class="w-full sm:w-auto text-xs font-medium bg-zinc-900 sm:bg-transparent text-white sm:text-accent hover:text-blue-700 py-2 sm:py-0 rounded-md sm:rounded-none transition-colors mt-1 sm:mt-0">Accept & Escrow</button>` : ''}
                 </div>
             `).join('');
 
             container.innerHTML += `
-                <div class="bg-white border ${isOpen ? 'border-zinc-300' : 'border-zinc-200 opacity-75'} p-5 rounded-md">
-                    <div class="flex justify-between items-start mb-4">
+                <div class="bg-white border ${isOpen ? 'border-zinc-300' : 'border-zinc-200 opacity-75'} p-4 sm:p-5 rounded-md">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                         <div>
                             <h3 class="text-base font-semibold text-zinc-900">${g.title}</h3>
                             <p class="text-xs text-zinc-500 mt-0.5">Budget: ₹${g.budget} • Deadline: ${formatDate(g.deadline)}</p>
                         </div>
-                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-sm ${isOpen ? 'bg-zinc-100 text-zinc-900' : 'bg-zinc-50 text-zinc-400'}">${g.status}</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-sm w-fit ${isOpen ? 'bg-zinc-100 text-zinc-900' : 'bg-zinc-50 text-zinc-400'}">${g.status}</span>
                     </div>
                     <div class="pt-4 border-t border-zinc-100">
                         <h4 class="text-xs font-semibold text-zinc-900 mb-2">Bids</h4>
@@ -106,7 +106,7 @@ async function acceptBid(project_id, proposal_id, freelancer_id, amount) {
         const data = await res.json();
         
         if(data.success) {
-            alert("Contract created! Funds have been secured in Escrow.");
+            alert("Contract created! Funds secured in Escrow.");
             user.balance = data.newBalance;
             localStorage.setItem('user', JSON.stringify(user));
             updateWalletDisplay();
