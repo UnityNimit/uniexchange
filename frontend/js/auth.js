@@ -8,7 +8,7 @@ async function register() {
         password: document.getElementById('r-password').value
     };
     
-    showLoader("Creating account & wallet");
+    showLoader("Creating account");
     try {
         const res = await fetch(`${API}/api/auth/register`, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -17,7 +17,7 @@ async function register() {
         const data = await res.json();
         
         if (data.success) {
-            alert("Account and Wallet created successfully! Please log in.");
+            alert("Account created successfully! Please log in.");
             toggleAuth();
             document.getElementById('l-email').value = payload.email;
         } else showError(data.error);

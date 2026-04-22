@@ -18,12 +18,17 @@ async function loadProfile() {
         const res = await fetch(`${API}/api/profile/stats/${user.id}`);
         const data = await res.json();
         
-        document.getElementById('stat-rating').innerText = data.avgRating;
+        if (data.error) throw new Error(data.error);
+
+        document.getElementById('stat-f-rating').innerText = data.freelancerRating;
+        document.getElementById('stat-c-rating').innerText = data.clientRating;
         document.getElementById('stat-jobs').innerText = data.gigsPosted;
         document.getElementById('stat-avg-given').innerText = `₹${data.avgGiven}`;
         document.getElementById('stat-given').innerText = `₹${data.totalGiven}`;
         document.getElementById('stat-earned').innerText = `₹${data.totalEarned}`;
-    } catch (e) { console.error("Failed to load profile stats"); }
+    } catch (e) { 
+        console.error("Failed to load profile stats"); 
+    }
 }
 
 async function uploadProfilePic() {

@@ -26,10 +26,7 @@ app.post('/api/auth/register', async (req, res) => {
             'INSERT INTO Platform_Users (role_id, first_name, last_name, email, password_hash, college_id, dob) VALUES (2, ?, ?, ?, ?, ?, ?)',[first_name, last_name, email, password, college_id, dob || null]
         );
         res.json({ success: true, user: { id: userRes.insertId, name: `${first_name} ${last_name}`, email, profile_pic_url: null } });
-    } catch (err) {
-        console.error("Register Error:", err);
-        res.status(400).json({ error: "Registration failed. Email or College ID might exist." });
-    }
+    } catch (err) { res.status(400).json({ error: "Registration failed. Email or College ID might exist." }); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -46,14 +43,14 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/change-password', async (req, res) => {
     try {
         const { userId, oldPassword, newPassword } = req.body;
-        const [users] = await pool.query('SELECT * FROM Platform_Users WHERE user_id = ? AND password_hash = ?', [userId, oldPassword]);
+        const[users] = await pool.query('SELECT * FROM Platform_Users WHERE user_id = ? AND password_hash = ?', [userId, oldPassword]);
         if (users.length === 0) return res.status(401).json({ error: "Incorrect old password." });
         await pool.query('UPDATE Platform_Users SET password_hash = ? WHERE user_id = ?',[newPassword, userId]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: "Failed to change password." }); }
 });
 
-// --- PROFILE & STATS ---
+// --- PROFILE & TWO-WAY STATS ---
 app.post('/api/profile/pfp', async (req, res) => {
     try {
         const { userId, url } = req.body;
@@ -65,31 +62,27 @@ app.post('/api/profile/pfp', async (req, res) => {
 app.get('/api/profile/stats/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        
-        const [user] = await pool.query('SELECT first_name, last_name, profile_pic_url, created_at FROM Platform_Users WHERE user_id = ?',[userId]);
+        const[user] = await pool.query('SELECT first_name, last_name, profile_pic_url, created_at FROM Platform_Users WHERE user_id = ?',[userId]);
         if (user.length === 0) return res.status(404).json({ error: "User not found" });
 
-        const [reviews] = await pool.query('SELECT AVG(rating) as avg_rating FROM Reviews WHERE reviewee_id = ?', [userId]);
-        const [gigs] = await pool.query('SELECT COUNT(*) as total_posted FROM Projects WHERE client_id = ?',[userId]);
+        // Two-way rating queries
+        const [fReviews] = await pool.query('SELECT AVG(r.rating) as avg_rating FROM Reviews r JOIN Contracts c ON r.contract_id = c.contract_id WHERE r.reviewee_id = ? AND c.freelancer_id = ?', [userId, userId]);
+        const[cReviews] = await pool.query('SELECT AVG(r.rating) as avg_rating FROM Reviews r JOIN Contracts c ON r.contract_id = c.contract_id WHERE r.reviewee_id = ? AND c.client_id = ?', [userId, userId]);
         
+        const [gigs] = await pool.query('SELECT COUNT(*) as total_posted FROM Projects WHERE client_id = ?',[userId]);
         const [earned] = await pool.query(`SELECT SUM(c.contract_amount) as total_earned FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.freelancer_id = ? AND p.status = 'completed'`, [userId]);
         const [given] = await pool.query(`SELECT SUM(c.contract_amount) as total_given, AVG(c.contract_amount) as avg_given FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.client_id = ? AND p.status = 'completed'`, [userId]);
 
         res.json({
-            firstName: user[0].first_name,
-            lastName: user[0].last_name,
-            pfp: user[0].profile_pic_url,
-            memberSince: user[0].created_at,
-            avgRating: reviews[0].avg_rating ? parseFloat(reviews[0].avg_rating).toFixed(1) : 'No ratings',
+            firstName: user[0].first_name, lastName: user[0].last_name, pfp: user[0].profile_pic_url, memberSince: user[0].created_at,
+            freelancerRating: fReviews[0].avg_rating ? parseFloat(fReviews[0].avg_rating).toFixed(1) : 'No ratings',
+            clientRating: cReviews[0].avg_rating ? parseFloat(cReviews[0].avg_rating).toFixed(1) : 'No ratings',
             gigsPosted: gigs[0].total_posted || 0,
             totalEarned: earned[0].total_earned || 0,
             totalGiven: given[0].total_given || 0,
             avgGiven: given[0].avg_given ? parseFloat(given[0].avg_given).toFixed(2) : 0
         });
-    } catch (err) { 
-        console.error("Stats Error:", err);
-        res.status(500).json({ error: "Failed to fetch stats." }); 
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to fetch stats." }); }
 });
 
 // --- CATEGORIES & GIGS ---
@@ -105,19 +98,12 @@ app.post('/api/gigs', async (req, res) => {
     try {
         const { client_id, category_id, title, description, budget, deadline } = req.body;
         await conn.beginTransaction();
-
         const [result] = await conn.query('INSERT INTO Projects (client_id, category_id, title, description, budget, deadline) VALUES (?, ?, ?, ?, ?, ?)',[client_id, category_id, title, description, budget, deadline]);
-        const projectId = result.insertId;
-
-        // Auto-initialize Status Info (Required since we dropped the Trigger)
-        await conn.query('INSERT INTO Project_status_info (project_id, project_status, payment_status) VALUES (?, ?, ?)',[projectId, 'Open for Bidding', 'Unpaid']);
-
+        await conn.query('INSERT INTO Project_status_info (project_id, project_status, payment_status) VALUES (?, ?, ?)',[result.insertId, 'Open for Bidding', 'Unpaid']);
         await conn.commit();
         res.json({ success: true });
     } catch (err) { 
-        await conn.rollback();
-        console.error("Gig Post Error:", err);
-        res.status(500).json({ error: "Failed to post project." }); 
+        await conn.rollback(); res.status(500).json({ error: "Failed to post project." }); 
     } finally { conn.release(); }
 });
 
@@ -144,11 +130,11 @@ app.get('/api/gigs', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Failed to fetch market." }); }
 });
 
-// Get My Gigs
+// Client View: Gigs they posted
 app.get('/api/gigs/my/:userId', async (req, res) => {
     try {
         const [gigs] = await pool.query(`
-            SELECT p.*, c.contract_amount, c.contract_id, u.first_name as f_first, u.last_name as f_last 
+            SELECT p.*, c.contract_amount, c.contract_id, c.freelancer_id, u.first_name as f_first, u.last_name as f_last 
             FROM Projects p 
             LEFT JOIN Contracts c ON p.project_id = c.project_id
             LEFT JOIN Platform_Users u ON c.freelancer_id = u.user_id
@@ -158,7 +144,27 @@ app.get('/api/gigs/my/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Failed to fetch your projects." }); }
 });
 
-// --- PROPOSALS & CASH CONTRACTS ---
+// Freelancer View: Bids they placed & active work
+app.get('/api/bids/my/:userId', async (req, res) => {
+    try {
+        const [bids] = await pool.query(`
+            SELECT prop.proposal_id, prop.proposal_amount, prop.status as bid_status,
+                   p.project_id, p.title, p.status as project_status, p.client_id, p.deadline,
+                   u.first_name as client_first, u.last_name as client_last,
+                   c.contract_id, c.contract_amount,
+                   (SELECT COUNT(*) FROM Reviews r WHERE r.contract_id = c.contract_id AND r.reviewer_id = ?) as has_rated_client
+            FROM Proposals prop
+            JOIN Projects p ON prop.project_id = p.project_id
+            JOIN Platform_Users u ON p.client_id = u.user_id
+            LEFT JOIN Contracts c ON prop.proposal_id = c.proposal_id
+            WHERE prop.freelancer_id = ?
+            ORDER BY prop.created_at DESC
+        `,[req.params.userId, req.params.userId]);
+        res.json(bids);
+    } catch (err) { res.status(500).json({ error: "Failed to fetch your bids." }); }
+});
+
+// --- PROPOSALS & CONTRACTS ---
 app.get('/api/bids/:projectId', async (req, res) => {
     try {
         const[bids] = await pool.query(`
@@ -178,8 +184,7 @@ app.post('/api/bids', async (req, res) => {
         if (gig[0].client_id === freelancer_id) throw new Error("You cannot bid on your own project.");
 
         const deadline = new Date(gig[0].deadline), now = new Date();
-        const diffMins = (deadline - now) / 1000 / 60;
-        if (diffMins > 0 && diffMins < 30) {
+        if (((deadline - now) / 1000 / 60) > 0 && ((deadline - now) / 1000 / 60) < 30) {
             await pool.query('UPDATE Projects SET deadline = DATE_ADD(deadline, INTERVAL 1 HOUR) WHERE project_id = ?',[project_id]);
         }
         await pool.query('INSERT INTO Proposals (project_id, freelancer_id, proposal_amount) VALUES (?, ?, ?)',[project_id, freelancer_id, amount]);
@@ -201,8 +206,7 @@ app.post('/api/gigs/accept', async (req, res) => {
         await conn.commit();
         res.json({ success: true });
     } catch (err) { 
-        await conn.rollback();
-        res.status(400).json({ error: "Transaction failed." }); 
+        await conn.rollback(); res.status(400).json({ error: "Transaction failed." }); 
     } finally { conn.release(); }
 });
 
@@ -215,16 +219,23 @@ app.post('/api/gigs/complete', async (req, res) => {
         await conn.query('UPDATE Projects SET status = "completed" WHERE project_id = ?', [project_id]);
         await conn.query('UPDATE Contracts SET completed_at = CURRENT_TIMESTAMP WHERE contract_id = ?', [contract_id]);
 
-        if (rating && rating >= 1 && rating <= 5) {
+        if (rating) {
             await conn.query('INSERT INTO Reviews (contract_id, reviewer_id, reviewee_id, rating) VALUES (?, ?, ?, ?)',[contract_id, client_id, freelancer_id, rating]);
         }
-
         await conn.commit();
         res.json({ success: true });
     } catch (err) { 
-        await conn.rollback();
-        res.status(400).json({ error: "Failed to complete gig." }); 
+        await conn.rollback(); res.status(400).json({ error: "Failed to complete gig." }); 
     } finally { conn.release(); }
+});
+
+// Freelancer rating the Client
+app.post('/api/gigs/rate', async (req, res) => {
+    try {
+        const { contract_id, reviewer_id, reviewee_id, rating } = req.body;
+        await pool.query('INSERT INTO Reviews (contract_id, reviewer_id, reviewee_id, rating) VALUES (?, ?, ?, ?)',[contract_id, reviewer_id, reviewee_id, rating]);
+        res.json({ success: true });
+    } catch (err) { res.status(400).json({ error: "Failed to submit rating." }); }
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));

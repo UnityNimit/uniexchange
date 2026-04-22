@@ -31,10 +31,11 @@
                 <p class="text-xs text-zinc-500 mt-1 uppercase tracking-wider font-semibold">Member since <span id="pub-date"></span></p>
             </div>
             <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-zinc-100">
-                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Avg Rating</p><p id="pub-rating" class="text-lg font-bold text-zinc-900"></p></div>
+                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Freelancer Rating</p><p id="pub-f-rating" class="text-lg font-bold text-zinc-900"></p></div>
+                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Client Rating</p><p id="pub-c-rating" class="text-lg font-bold text-zinc-900"></p></div>
                 <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Gigs Posted</p><p id="pub-posted" class="text-lg font-bold text-zinc-900"></p></div>
                 <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Total Paid Out</p><p id="pub-paid" class="text-lg font-bold text-emerald-600"></p></div>
-                <div class="text-center"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Total Earned</p><p id="pub-earned" class="text-lg font-bold text-accent"></p></div>
+                <div class="text-center col-span-2"><p class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Total Earned</p><p id="pub-earned" class="text-lg font-bold text-accent"></p></div>
             </div>
         </div>
     </div>
@@ -66,8 +67,8 @@
             <div class="space-y-4 w-full" id="login-fields">
                 <input type="email" id="l-email" placeholder="University Email" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
                 <input type="password" id="l-password" placeholder="Password" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
-                <button onclick="login()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 text-sm font-medium rounded-md mt-2">Log In</button>
-                <button onclick="toggleAuth()" class="w-full text-sm text-zinc-500 hover:text-zinc-900 pb-4">Need an account? Register</button>
+                <button onclick="login()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 text-sm font-medium rounded-md mt-2 transition-colors">Log In</button>
+                <button onclick="toggleAuth()" class="w-full text-sm text-zinc-500 hover:text-zinc-900 pb-4 transition-colors">Need an account? Register</button>
             </div>
 
             <div class="space-y-4 hidden w-full" id="register-fields">
@@ -79,8 +80,8 @@
                 <input type="date" id="r-dob" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm text-zinc-500">
                 <input type="email" id="r-email" placeholder="University Email" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
                 <input type="password" id="r-password" placeholder="Password" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
-                <button onclick="register()" class="w-full bg-white border border-zinc-300 hover:bg-zinc-50 text-zinc-900 py-2.5 text-sm font-medium rounded-md mt-2">Create Account</button>
-                <button onclick="toggleAuth()" class="w-full text-sm text-zinc-500 hover:text-zinc-900 pb-4">Back to Login</button>
+                <button onclick="register()" class="w-full bg-white border border-zinc-300 hover:bg-zinc-50 text-zinc-900 py-2.5 text-sm font-medium rounded-md mt-2 transition-colors">Create Account</button>
+                <button onclick="toggleAuth()" class="w-full text-sm text-zinc-500 hover:text-zinc-900 pb-4 transition-colors">Back to Login</button>
             </div>
         </section>
 
@@ -92,7 +93,7 @@
                     <div><h2 class="text-lg font-semibold text-zinc-900">Live Market</h2></div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="search-query" placeholder="Search gigs..." class="w-full sm:w-64 px-3 py-2 sm:py-1.5 text-sm border border-zinc-300 outline-none rounded-md">
-                        <button onclick="loadMarket()" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium px-4 py-2 sm:py-1.5 rounded-md border border-zinc-200 shrink-0">Search</button>
+                        <button onclick="loadMarket()" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium px-4 py-2 sm:py-1.5 rounded-md border border-zinc-200 shrink-0 transition-colors">Search</button>
                     </div>
                 </div>
                 <div id="market-container" class="grid gap-5"></div>
@@ -109,16 +110,25 @@
                         <input type="number" id="gig-budget" placeholder="Cash Budget (₹)" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md w-full">
                         <input type="datetime-local" id="gig-deadline" class="px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md text-zinc-600 w-full">
                         <div class="col-span-1 sm:col-span-2 md:col-span-3 flex justify-end mt-2">
-                            <button onclick="postGig()" class="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium rounded-md px-6 py-2.5 sm:py-2">Publish Gig</button>
+                            <button onclick="postGig()" class="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium rounded-md px-6 py-2.5 sm:py-2 transition-colors">Publish Gig</button>
                         </div>
                     </div>
                 </div>
+                
                 <div>
                     <div class="flex items-end justify-between border-b border-zinc-200 pb-4 mb-4">
                         <h2 class="text-lg font-semibold text-zinc-900">Your Postings</h2>
                         <button onclick="loadMyGigs()" class="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors">Refresh</button>
                     </div>
-                    <div id="my-gigs-container" class="grid gap-4"></div>
+                    <div id="my-gigs-container" class="grid gap-4 mb-10"></div>
+
+                    <div class="flex items-end justify-between border-b border-zinc-200 pb-4 mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-zinc-900">Your Bids & Work</h2>
+                            <p class="text-sm text-zinc-500 mt-1">Track gigs you have bid on or are currently hired for.</p>
+                        </div>
+                    </div>
+                    <div id="my-work-container" class="grid gap-4"></div>
                 </div>
             </div>
 
@@ -138,8 +148,12 @@
                             
                             <div class="grid grid-cols-2 sm:flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
                                 <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
-                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Avg Rating</span>
-                                    <span id="stat-rating" class="font-semibold text-zinc-900 text-lg">-</span>
+                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Freelancer Rating</span>
+                                    <span id="stat-f-rating" class="font-semibold text-zinc-900 text-lg">-</span>
+                                </div>
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Client Rating</span>
+                                    <span id="stat-c-rating" class="font-semibold text-zinc-900 text-lg">-</span>
                                 </div>
                                 <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Gigs Posted</span>
@@ -153,7 +167,7 @@
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Paid Out</span>
                                     <span id="stat-given" class="font-semibold text-emerald-600 text-lg">-</span>
                                 </div>
-                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto col-span-2">
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto col-span-2 sm:col-span-1">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Earned</span>
                                     <span id="stat-earned" class="font-semibold text-accent text-lg">-</span>
                                 </div>
@@ -163,10 +177,10 @@
 
                     <div class="mb-8 bg-white p-5 border border-zinc-200 rounded-md">
                         <h3 class="text-sm font-medium text-zinc-900 mb-1">Profile Picture</h3>
-                        <p class="text-xs text-zinc-500 mb-4">Upload an image or GIF (Max 5MB).</p>
+                        <p class="text-xs text-zinc-500 mb-4">Upload an image or GIF (Max 5MB). It is saved directly to the database.</p>
                         <div class="flex flex-col sm:flex-row gap-3">
-                            <input type="file" id="pfp-file" accept="image/*" class="w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 border border-zinc-300 rounded-md bg-white cursor-pointer outline-none">
-                            <button onclick="uploadProfilePic()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium px-6 py-2 rounded-md whitespace-nowrap">Upload Image</button>
+                            <input type="file" id="pfp-file" accept="image/*" class="w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 border border-zinc-300 rounded-md bg-white cursor-pointer outline-none transition-colors">
+                            <button onclick="uploadProfilePic()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium px-6 py-2 rounded-md transition-colors whitespace-nowrap">Upload Image</button>
                         </div>
                     </div>
 
@@ -175,7 +189,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
                             <input type="password" id="old-password" placeholder="Current Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 outline-none rounded-md">
                             <input type="password" id="new-password" placeholder="New Password" class="w-full px-3 py-2 text-sm bg-white border border-zinc-300 outline-none rounded-md">
-                            <button onclick="changePassword()" class="col-span-1 sm:col-span-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium py-2 rounded-md border border-zinc-200">Update Password</button>
+                            <button onclick="changePassword()" class="col-span-1 sm:col-span-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium py-2 rounded-md border border-zinc-200 transition-colors">Update Password</button>
                         </div>
                     </div>
                     <div class="pt-6 border-t border-zinc-200 text-center sm:text-left pb-10">

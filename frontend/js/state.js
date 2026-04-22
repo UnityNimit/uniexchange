@@ -1,6 +1,6 @@
 const API = ''; 
 let user = JSON.parse(localStorage.getItem('user'));
-let progressInterval = null; // Used for live progress bars
+let progressInterval = null; 
 
 function showLoader(text = "Processing") {
     document.getElementById('loader-text').innerText = text;
@@ -27,9 +27,7 @@ function showDashboard() {
 }
 
 function switchTab(tab) {
-    if(progressInterval) clearInterval(progressInterval);
-    
-    ['tab-market', 'tab-my-gigs', 'tab-profile'].forEach(id => document.getElementById(id).classList.add('hidden'));['btn-market', 'btn-my-gigs', 'btn-profile'].forEach(id => {
+    if(progressInterval) clearInterval(progressInterval);['tab-market', 'tab-my-gigs', 'tab-profile'].forEach(id => document.getElementById(id).classList.add('hidden'));['btn-market', 'btn-my-gigs', 'btn-profile'].forEach(id => {
         const btn = document.getElementById(id);
         btn.classList.remove('border-zinc-900', 'text-zinc-900');
         btn.classList.add('border-transparent', 'text-zinc-500');
@@ -48,7 +46,6 @@ function formatDate(dateString) {
     return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(dateString));
 }
 
-// PUBLIC PROFILE MODAL LOGIC
 async function showPublicProfile(userId) {
     document.getElementById('public-profile-modal').classList.replace('hidden', 'flex');
     try {
@@ -57,7 +54,8 @@ async function showPublicProfile(userId) {
         
         document.getElementById('pub-name').innerText = `${data.firstName} ${data.lastName}`;
         document.getElementById('pub-date').innerText = new Date(data.memberSince).getFullYear();
-        document.getElementById('pub-rating').innerText = data.avgRating;
+        document.getElementById('pub-f-rating').innerText = data.freelancerRating;
+        document.getElementById('pub-c-rating').innerText = data.clientRating;
         document.getElementById('pub-posted').innerText = data.gigsPosted;
         document.getElementById('pub-paid').innerText = `₹${data.totalGiven}`;
         document.getElementById('pub-earned').innerText = `₹${data.totalEarned}`;

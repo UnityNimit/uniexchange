@@ -13,10 +13,9 @@ async function loadMarket() {
 
         container.innerHTML = gigs.map(g => `
             <div class="market-card relative bg-white border border-zinc-200 rounded-md hover:border-zinc-300 transition-colors overflow-hidden">
-                <div class="p-5">
+                <div class="p-4 sm:p-5">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
                         
-                        <!-- Client Identity & Clickable PFP -->
                         <div class="flex items-center gap-3 cursor-pointer group" onclick="showPublicProfile(${g.client_id})">
                             <div class="w-10 h-10 rounded-full overflow-hidden bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0">
                                 ${g.profile_pic_url && g.profile_pic_url.length > 10 
@@ -55,9 +54,8 @@ async function loadMarket() {
                     </div>
                 </div>
 
-                <!-- Live Decreasing Progress Bar -->
                 <div class="absolute bottom-0 left-0 w-full h-1 bg-zinc-100">
-                    <div class="gig-progress h-full bg-zinc-900" data-start="${new Date(g.created_at).getTime()}" data-end="${new Date(g.deadline).getTime()}"></div>
+                    <div class="gig-progress h-full bg-zinc-900 transition-all duration-1000 ease-linear" data-start="${new Date(g.created_at).getTime()}" data-end="${new Date(g.deadline).getTime()}"></div>
                 </div>
             </div>
         `).join('');
@@ -96,7 +94,6 @@ function startProgressBars() {
                 const pct = Math.max(0, Math.min(100, (remaining / total) * 100));
                 el.style.width = pct + '%';
                 
-                // Color shift for high urgency
                 if(pct < 15) el.classList.replace('bg-zinc-900', 'bg-red-500');
             }
         });
