@@ -1,5 +1,6 @@
 async function register() {
     const payload = {
+        username: document.getElementById('r-username').value,
         first_name: document.getElementById('r-fname').value,
         last_name: document.getElementById('r-lname').value,
         college_id: document.getElementById('r-cid').value,
@@ -8,6 +9,8 @@ async function register() {
         password: document.getElementById('r-password').value
     };
     
+    if(!payload.username || !payload.email || !payload.password) return showError("Required fields missing.");
+
     showLoader("Creating account");
     try {
         const res = await fetch(`${API}/api/auth/register`, {
@@ -40,7 +43,7 @@ async function login() {
         if (data.success) {
             user = data.user;
             localStorage.setItem('user', JSON.stringify(user));
-            showDashboard();
+            validateSession(); // Validates and opens dashboard
         } else showError(data.error);
     } catch (e) { showError("Network error. Verify server status."); }
     hideLoader();

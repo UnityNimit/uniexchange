@@ -18,15 +18,43 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
+// --- SESSION VERIFICATION (Fixes the cache glitch) ---
+app.get('/api/auth/verify/:userId', async (req, res) => {
+    try {
+        const [users] = await pool.query('SELECT user_id FROM Platform_Users WHERE user_id = ?', [req.params.userId]);
+        if (users.length === 0) return res.json({ valid: false });
+        res.json({ valid: true });
+    } catch (err) { res.json({ valid: false }); }
+});
+
 // --- AUTHENTICATION ---
 app.post('/api/auth/register', async (req, res) => {
+    const conn = await pool.getConnection();
     try {
-        const { first_name, last_name, email, password, college_id, dob } = req.body;
-        const [userRes] = await pool.query(
-            'INSERT INTO Platform_Users (role_id, first_name, last_name, email, password_hash, college_id, dob) VALUES (2, ?, ?, ?, ?, ?, ?)',[first_name, last_name, email, password, college_id, dob || null]
+        const { username, first_name, last_name, email, password, college_id, dob } = req.body;
+        await conn.beginTransaction();
+        
+        const [userRes] = await conn.query(
+            'INSERT INTO Platform_Users (role_id, username, first_name, last_name, email, password_hash, college_id, dob) VALUES (2, ?, ?, ?, ?, ?, ?, ?)',[username, first_name, last_name, email, password, college_id, dob || null]
         );
-        res.json({ success: true, user: { id: userRes.insertId, name: `${first_name} ${last_name}`, email, profile_pic_url: null } });
-    } catch (err) { res.status(400).json({ error: "Registration failed. Email or College ID might exist." }); }
+        const userId = userRes.insertId;
+
+        await conn.query('INSERT INTO User_wallets (user_id, balance) VALUES (?, 0.00)', [userId]);
+        await conn.commit();
+        
+        res.json({ success: true, user: { id: userId, username, name: `${first_name} ${last_name}`, email, profile_pic_url: null } });
+    } catch (err) {
+        await conn.rollback();
+        // Intelligent error mapping
+        let errorMsg = "Registration failed.";
+        if (err.code === 'ER_DUP_ENTRY') {
+            if (err.message.includes('username')) errorMsg = "Username is already taken.";
+            else if (err.message.includes('email')) errorMsg = "Email is already registered.";
+            else if (err.message.includes('college_id')) errorMsg = "College ID is already registered.";
+            else if (err.message.includes('password_hash')) errorMsg = "This password is too common or already in use. Choose another.";
+        }
+        res.status(400).json({ error: errorMsg });
+    } finally { conn.release(); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -35,7 +63,7 @@ app.post('/api/auth/login', async (req, res) => {
         const [users] = await pool.query('SELECT * FROM Platform_Users WHERE email = ? AND password_hash = ?', [email, password]);
         if (users.length > 0) {
             const u = users[0];
-            res.json({ success: true, user: { id: u.user_id, name: `${u.first_name} ${u.last_name}`, email: u.email, profile_pic_url: u.profile_pic_url } });
+            res.json({ success: true, user: { id: u.user_id, username: u.username, name: `${u.first_name} ${u.last_name}`, email: u.email, profile_pic_url: u.profile_pic_url } });
         } else res.status(401).json({ error: "Invalid credentials." });
     } catch (err) { res.status(500).json({ error: "Server error." }); }
 });
@@ -43,14 +71,27 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/change-password', async (req, res) => {
     try {
         const { userId, oldPassword, newPassword } = req.body;
-        const[users] = await pool.query('SELECT * FROM Platform_Users WHERE user_id = ? AND password_hash = ?', [userId, oldPassword]);
-        if (users.length === 0) return res.status(401).json({ error: "Incorrect old password." });
+        const [users] = await pool.query('SELECT * FROM Platform_Users WHERE user_id = ? AND password_hash = ?', [userId, oldPassword]);
+        if (users.length === 0) return res.status(401).json({ error: "Incorrect current password." });
+        
         await pool.query('UPDATE Platform_Users SET password_hash = ? WHERE user_id = ?',[newPassword, userId]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: "Failed to change password." }); }
+    } catch (err) { 
+        if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: "This password is already in use by someone else."});
+        res.status(500).json({ error: "Failed to change password." }); 
+    }
 });
 
-// --- PROFILE & TWO-WAY STATS ---
+// --- ACCOUNT DELETION ---
+app.delete('/api/profile/:userId', async (req, res) => {
+    try {
+        // ON DELETE CASCADE in the DB automatically wipes their gigs, bids, and contracts safely.
+        await pool.query('DELETE FROM Platform_Users WHERE user_id = ?', [req.params.userId]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: "Failed to delete account." }); }
+});
+
+// --- PROFILE & STATS ---
 app.post('/api/profile/pfp', async (req, res) => {
     try {
         const { userId, url } = req.body;
@@ -62,24 +103,22 @@ app.post('/api/profile/pfp', async (req, res) => {
 app.get('/api/profile/stats/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        const[user] = await pool.query('SELECT first_name, last_name, profile_pic_url, created_at FROM Platform_Users WHERE user_id = ?',[userId]);
+        const [user] = await pool.query('SELECT username, first_name, last_name, profile_pic_url, created_at FROM Platform_Users WHERE user_id = ?',[userId]);
         if (user.length === 0) return res.status(404).json({ error: "User not found" });
 
-        // Two-way rating queries
-        const [fReviews] = await pool.query('SELECT AVG(r.rating) as avg_rating FROM Reviews r JOIN Contracts c ON r.contract_id = c.contract_id WHERE r.reviewee_id = ? AND c.freelancer_id = ?', [userId, userId]);
-        const[cReviews] = await pool.query('SELECT AVG(r.rating) as avg_rating FROM Reviews r JOIN Contracts c ON r.contract_id = c.contract_id WHERE r.reviewee_id = ? AND c.client_id = ?', [userId, userId]);
+        const [fReviews] = await pool.query('SELECT AVG(r.rating) as avg_rating FROM Reviews r JOIN Contracts c ON r.contract_id = c.contract_id WHERE r.reviewee_id = ? AND c.freelancer_id = ?',[userId, userId]);
+        const [cReviews] = await pool.query('SELECT AVG(r.rating) as avg_rating FROM Reviews r JOIN Contracts c ON r.contract_id = c.contract_id WHERE r.reviewee_id = ? AND c.client_id = ?', [userId, userId]);
         
         const [gigs] = await pool.query('SELECT COUNT(*) as total_posted FROM Projects WHERE client_id = ?',[userId]);
         const [earned] = await pool.query(`SELECT SUM(c.contract_amount) as total_earned FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.freelancer_id = ? AND p.status = 'completed'`, [userId]);
-        const [given] = await pool.query(`SELECT SUM(c.contract_amount) as total_given, AVG(c.contract_amount) as avg_given FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.client_id = ? AND p.status = 'completed'`, [userId]);
+        const[given] = await pool.query(`SELECT SUM(c.contract_amount) as total_given, AVG(c.contract_amount) as avg_given FROM Contracts c JOIN Projects p ON c.project_id = p.project_id WHERE c.client_id = ? AND p.status = 'completed'`, [userId]);
 
         res.json({
-            firstName: user[0].first_name, lastName: user[0].last_name, pfp: user[0].profile_pic_url, memberSince: user[0].created_at,
+            username: user[0].username, firstName: user[0].first_name, lastName: user[0].last_name, pfp: user[0].profile_pic_url, memberSince: user[0].created_at,
             freelancerRating: fReviews[0].avg_rating ? parseFloat(fReviews[0].avg_rating).toFixed(1) : 'No ratings',
             clientRating: cReviews[0].avg_rating ? parseFloat(cReviews[0].avg_rating).toFixed(1) : 'No ratings',
             gigsPosted: gigs[0].total_posted || 0,
-            totalEarned: earned[0].total_earned || 0,
-            totalGiven: given[0].total_given || 0,
+            totalEarned: earned[0].total_earned || 0, totalGiven: given[0].total_given || 0,
             avgGiven: given[0].avg_given ? parseFloat(given[0].avg_given).toFixed(2) : 0
         });
     } catch (err) { res.status(500).json({ error: "Failed to fetch stats." }); }
@@ -88,7 +127,7 @@ app.get('/api/profile/stats/:userId', async (req, res) => {
 // --- CATEGORIES & GIGS ---
 app.get('/api/categories', async (req, res) => {
     try {
-        const[cats] = await pool.query('SELECT * FROM Project_categories ORDER BY category_name ASC');
+        const [cats] = await pool.query('SELECT * FROM Project_categories ORDER BY category_name ASC');
         res.json(cats);
     } catch (err) { res.status(500).json({ error: "Failed to load categories." }); }
 });
@@ -112,7 +151,7 @@ app.get('/api/gigs', async (req, res) => {
         const searchQuery = req.query.q;
         let query = `
             SELECT p.project_id, p.title, p.description, p.budget, p.deadline, p.created_at,
-                   u.user_id as client_id, u.first_name, u.last_name, u.profile_pic_url, 
+                   u.user_id as client_id, u.username, u.first_name, u.last_name, u.profile_pic_url, 
                    dmp.current_market_value, dmp.total_proposals
             FROM Projects p
             JOIN Platform_Users u ON p.client_id = u.user_id
@@ -125,16 +164,15 @@ app.get('/api/gigs', async (req, res) => {
             params.push(`%${searchQuery}%`, `%${searchQuery}%`);
         }
         query += ` ORDER BY p.created_at DESC`;
-        const [gigs] = await pool.query(query, params);
+        const[gigs] = await pool.query(query, params);
         res.json(gigs);
     } catch (err) { res.status(500).json({ error: "Failed to fetch market." }); }
 });
 
-// Client View: Gigs they posted
 app.get('/api/gigs/my/:userId', async (req, res) => {
     try {
         const [gigs] = await pool.query(`
-            SELECT p.*, c.contract_amount, c.contract_id, c.freelancer_id, u.first_name as f_first, u.last_name as f_last 
+            SELECT p.*, c.contract_amount, c.contract_id, c.freelancer_id, u.first_name as f_first, u.last_name as f_last, u.username as f_username 
             FROM Projects p 
             LEFT JOIN Contracts c ON p.project_id = c.project_id
             LEFT JOIN Platform_Users u ON c.freelancer_id = u.user_id
@@ -144,31 +182,29 @@ app.get('/api/gigs/my/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Failed to fetch your projects." }); }
 });
 
-// Freelancer View: Bids they placed & active work
+// --- PROPOSALS & CONTRACTS ---
 app.get('/api/bids/my/:userId', async (req, res) => {
     try {
         const [bids] = await pool.query(`
             SELECT prop.proposal_id, prop.proposal_amount, prop.status as bid_status,
                    p.project_id, p.title, p.status as project_status, p.client_id, p.deadline,
-                   u.first_name as client_first, u.last_name as client_last,
+                   u.username as client_username, u.first_name as client_first, u.last_name as client_last,
                    c.contract_id, c.contract_amount,
                    (SELECT COUNT(*) FROM Reviews r WHERE r.contract_id = c.contract_id AND r.reviewer_id = ?) as has_rated_client
             FROM Proposals prop
             JOIN Projects p ON prop.project_id = p.project_id
             JOIN Platform_Users u ON p.client_id = u.user_id
             LEFT JOIN Contracts c ON prop.proposal_id = c.proposal_id
-            WHERE prop.freelancer_id = ?
-            ORDER BY prop.created_at DESC
+            WHERE prop.freelancer_id = ? ORDER BY prop.created_at DESC
         `,[req.params.userId, req.params.userId]);
         res.json(bids);
     } catch (err) { res.status(500).json({ error: "Failed to fetch your bids." }); }
 });
 
-// --- PROPOSALS & CONTRACTS ---
 app.get('/api/bids/:projectId', async (req, res) => {
     try {
         const[bids] = await pool.query(`
-            SELECT prop.proposal_id, prop.proposal_amount, u.user_id as freelancer_id, u.first_name, u.last_name 
+            SELECT prop.proposal_id, prop.proposal_amount, u.user_id as freelancer_id, u.username, u.first_name, u.last_name 
             FROM Proposals prop JOIN Platform_Users u ON prop.freelancer_id = u.user_id 
             WHERE prop.project_id = ? ORDER BY prop.proposal_amount ASC
         `, [req.params.projectId]);
@@ -229,7 +265,6 @@ app.post('/api/gigs/complete', async (req, res) => {
     } finally { conn.release(); }
 });
 
-// Freelancer rating the Client
 app.post('/api/gigs/rate', async (req, res) => {
     try {
         const { contract_id, reviewer_id, reviewee_id, rating } = req.body;

@@ -1,6 +1,7 @@
 async function loadProfile() {
     document.getElementById('profile-name').innerText = user.name || "Unknown";
     document.getElementById('profile-email').innerText = user.email || "Unknown";
+    document.getElementById('profile-username').innerText = `@${user.username || "user"}`;
     
     const imgEl = document.getElementById('profile-img');
     const initialsEl = document.getElementById('profile-initials');
@@ -26,9 +27,7 @@ async function loadProfile() {
         document.getElementById('stat-avg-given').innerText = `₹${data.avgGiven}`;
         document.getElementById('stat-given').innerText = `₹${data.totalGiven}`;
         document.getElementById('stat-earned').innerText = `₹${data.totalEarned}`;
-    } catch (e) { 
-        console.error("Failed to load profile stats"); 
-    }
+    } catch (e) { console.error("Failed to load profile stats"); }
 }
 
 async function uploadProfilePic() {
@@ -77,5 +76,19 @@ async function changePassword() {
             document.getElementById('old-password').value = ''; document.getElementById('new-password').value = '';
         } else alert(data.error);
     } catch (e) { alert("Error updating password."); }
+    hideLoader();
+}
+
+async function deleteAccount() {
+    if(!confirm("DANGER: This will permanently delete your account, all your gigs, bids, and contracts. This cannot be undone. Are you sure?")) return;
+    
+    showLoader("Deleting account");
+    try {
+        const res = await fetch(`${API}/api/profile/${user.id}`, { method: 'DELETE' });
+        if(res.ok) {
+            alert("Account deleted permanently.");
+            logout();
+        } else alert("Failed to delete account.");
+    } catch(e) { alert("Error deleting account."); }
     hideLoader();
 }

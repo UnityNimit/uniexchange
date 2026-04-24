@@ -13,6 +13,7 @@
 </head>
 <body class="bg-zinc-50 text-zinc-800 font-sans antialiased min-h-screen flex flex-col selection:bg-zinc-200">
 
+    <!-- Global Loading Overlay -->
     <div id="loader" class="fixed inset-0 z-50 bg-zinc-50/90 backdrop-blur-sm hidden flex-col items-center justify-center transition-all">
         <div class="w-8 h-8 border-[3px] border-zinc-200 border-t-zinc-900 rounded-full animate-spin"></div>
         <p id="loader-text" class="mt-4 text-zinc-900 font-medium text-sm tracking-wide text-center px-4">Processing</p>
@@ -64,6 +65,7 @@
             <div class="text-center mb-8"><h2 class="text-xl font-semibold text-zinc-900">Welcome to UniExchange</h2></div>
             <div id="auth-error" class="hidden bg-red-50 text-red-600 px-4 py-3 text-sm mb-6 border border-red-100 rounded-md"></div>
             
+            <!-- Login -->
             <div class="space-y-4 w-full" id="login-fields">
                 <input type="email" id="l-email" placeholder="University Email" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
                 <input type="password" id="l-password" placeholder="Password" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
@@ -71,7 +73,9 @@
                 <button onclick="toggleAuth()" class="w-full text-sm text-zinc-500 hover:text-zinc-900 pb-4 transition-colors">Need an account? Register</button>
             </div>
 
+            <!-- Register -->
             <div class="space-y-4 hidden w-full" id="register-fields">
+                <input type="text" id="r-username" placeholder="Choose a Username" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
                 <div class="grid grid-cols-2 gap-4">
                     <input type="text" id="r-fname" placeholder="First Name" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
                     <input type="text" id="r-lname" placeholder="Last Name" class="w-full px-3 py-2.5 border border-zinc-300 outline-none rounded-md text-sm">
@@ -87,6 +91,7 @@
 
         <!-- DASHBOARD SECTION -->
         <section id="dashboard-section" class="hidden">
+            
             <!-- TAB 1: Market -->
             <div id="tab-market" class="space-y-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-200 pb-4 mb-4 gap-4">
@@ -101,7 +106,7 @@
 
             <!-- TAB 2: Gigs & Bids -->
             <div id="tab-my-gigs" class="hidden space-y-8 sm:space-y-12">
-                <div class="bg-white p-4 sm:p-6 border border-zinc-200 rounded-md">
+                <div class="bg-white p-4 sm:p-6 border border-zinc-200 rounded-md shadow-sm">
                     <h3 class="text-base font-semibold text-zinc-900 mb-4">Post a New Gig</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         <input type="text" id="gig-title" placeholder="Gig Title" class="col-span-1 sm:col-span-2 md:col-span-3 px-3 py-2.5 sm:py-2 text-sm border border-zinc-300 outline-none rounded-md">
@@ -138,36 +143,33 @@
                     <h2 class="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-200 pb-4">Profile & Cash Statistics</h2>
                     
                     <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10 text-center sm:text-left">
-                        <div class="relative w-24 h-24 rounded-full border border-zinc-200 bg-zinc-100 shrink-0 overflow-hidden">
+                        <div class="relative w-24 h-24 rounded-full border border-zinc-200 bg-zinc-100 shrink-0 overflow-hidden shadow-sm">
                             <img id="profile-img" src="" class="w-full h-full object-cover hidden">
                             <div id="profile-initials" class="w-full h-full flex items-center justify-center text-zinc-400 text-2xl font-medium">UE</div>
                         </div>
                         <div class="flex-grow w-full">
                             <h3 id="profile-name" class="font-semibold text-xl text-zinc-900">-</h3>
+                            <p id="profile-username" class="text-sm font-medium text-zinc-500 mt-0.5">-</p>
                             <p id="profile-email" class="text-sm text-zinc-500 mb-6">-</p>
                             
                             <div class="grid grid-cols-2 sm:flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
-                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 shadow-sm w-full sm:w-auto">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Freelancer Rating</span>
                                     <span id="stat-f-rating" class="font-semibold text-zinc-900 text-lg">-</span>
                                 </div>
-                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 shadow-sm w-full sm:w-auto">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Client Rating</span>
                                     <span id="stat-c-rating" class="font-semibold text-zinc-900 text-lg">-</span>
                                 </div>
-                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 shadow-sm w-full sm:w-auto">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Gigs Posted</span>
                                     <span id="stat-jobs" class="font-semibold text-zinc-900 text-lg">-</span>
                                 </div>
-                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
-                                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Avg Paid Out</span>
-                                    <span id="stat-avg-given" class="font-semibold text-zinc-900 text-lg">-</span>
-                                </div>
-                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto">
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 shadow-sm w-full sm:w-auto">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Paid Out</span>
                                     <span id="stat-given" class="font-semibold text-emerald-600 text-lg">-</span>
                                 </div>
-                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 w-full sm:w-auto col-span-2 sm:col-span-1">
+                                <div class="flex flex-col bg-white p-3 rounded-md border border-zinc-200 shadow-sm w-full sm:w-auto col-span-2 sm:col-span-1">
                                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Total Earned</span>
                                     <span id="stat-earned" class="font-semibold text-accent text-lg">-</span>
                                 </div>
@@ -175,9 +177,9 @@
                         </div>
                     </div>
 
-                    <div class="mb-8 bg-white p-5 border border-zinc-200 rounded-md">
+                    <div class="mb-8 bg-white p-5 border border-zinc-200 rounded-md shadow-sm">
                         <h3 class="text-sm font-medium text-zinc-900 mb-1">Profile Picture</h3>
-                        <p class="text-xs text-zinc-500 mb-4">Upload an image or GIF (Max 5MB). It is saved directly to the database.</p>
+                        <p class="text-xs text-zinc-500 mb-4">Upload an image or GIF (Max 5MB). Saved directly to the database.</p>
                         <div class="flex flex-col sm:flex-row gap-3">
                             <input type="file" id="pfp-file" accept="image/*" class="w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 border border-zinc-300 rounded-md bg-white cursor-pointer outline-none transition-colors">
                             <button onclick="uploadProfilePic()" class="bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium px-6 py-2 rounded-md transition-colors whitespace-nowrap">Upload Image</button>
@@ -192,8 +194,11 @@
                             <button onclick="changePassword()" class="col-span-1 sm:col-span-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium py-2 rounded-md border border-zinc-200 transition-colors">Update Password</button>
                         </div>
                     </div>
-                    <div class="pt-6 border-t border-zinc-200 text-center sm:text-left pb-10">
-                        <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium transition-colors w-full sm:w-auto py-2 sm:py-0 border border-red-200 sm:border-none rounded-md sm:rounded-none">Log Out</button>
+                    
+                    <!-- Danger Zone -->
+                    <div class="pt-6 border-t border-zinc-200 text-center sm:text-left flex flex-col sm:flex-row gap-3 pb-10">
+                        <button onclick="logout()" class="text-sm text-zinc-600 hover:text-zinc-900 font-medium transition-colors w-full sm:w-auto py-2 sm:py-0 border border-zinc-200 sm:border-none rounded-md sm:rounded-none">Log Out</button>
+                        <button onclick="deleteAccount()" class="text-sm text-red-600 hover:text-red-700 font-medium transition-colors w-full sm:w-auto py-2 sm:py-0 border border-red-200 sm:border-none rounded-md sm:rounded-none">Delete Account Permanently</button>
                     </div>
                 </div>
             </div>

@@ -52,7 +52,7 @@ async function showPublicProfile(userId) {
         const res = await fetch(`${API}/api/profile/stats/${userId}`);
         const data = await res.json();
         
-        document.getElementById('pub-name').innerText = `${data.firstName} ${data.lastName}`;
+        document.getElementById('pub-name').innerText = `${data.firstName} ${data.lastName} (@${data.username})`;
         document.getElementById('pub-date').innerText = new Date(data.memberSince).getFullYear();
         document.getElementById('pub-f-rating').innerText = data.freelancerRating;
         document.getElementById('pub-c-rating').innerText = data.clientRating;
@@ -71,8 +71,21 @@ async function showPublicProfile(userId) {
     } catch(e) { console.error(e); }
 }
 
-function closePublicProfile() {
-    document.getElementById('public-profile-modal').classList.replace('flex', 'hidden');
+function closePublicProfile() { document.getElementById('public-profile-modal').classList.replace('flex', 'hidden'); }
+
+// Verify Session Integrity on Load
+async function validateSession() {
+    if (!user) return;
+    try {
+        const res = await fetch(`${API}/api/auth/verify/${user.id}`);
+        const data = await res.json();
+        if (!data.valid) {
+            alert("Database was reset or account no longer exists. Logging out.");
+            logout();
+        } else {
+            showDashboard();
+        }
+    } catch (e) { showDashboard(); }
 }
 
-window.onload = () => { if(user) showDashboard(); };
+window.onload = () => { validateSession(); };
